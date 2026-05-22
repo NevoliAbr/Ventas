@@ -1,0 +1,510 @@
+/*
+ * Base estructural + capa de "toques Apple" sobre SLDS.
+ * SLDS (CDN, index.html) aporta los componentes; aquí los suavizamos al estilo
+ * Apple: tipografía del sistema, más aire, radios mayores, sombras suaves y azul
+ * Apple. Los overrides van prefijados con .slds-scope (+ !important donde hace
+ * falta) para ganar a las reglas de SLDS sin importar el orden de carga.
+ */
+
+/* ---------- Estructura (sin equivalente de utilidad en SLDS) ---------- */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #f5f5f7; /* gris de fondo característico de Apple */
+}
+
+/* Centra a pantalla completa las vistas de auth. */
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 24rem;
+}
+
+/* ===================== Toques Apple sobre SLDS ===================== */
+
+/* Tipografía del sistema (SF Pro en equipos Apple). */
+.slds-scope,
+.slds-scope button,
+.slds-scope input,
+.slds-scope a {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tarjetas: blancas, muy redondeadas, sombra suave, más aire, sin borde. */
+.slds-scope .slds-box {
+  border: none !important;
+  border-radius: 20px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08) !important;
+  padding: 2.25rem !important;
+  background: #ffffff !important;
+}
+
+/* Títulos al estilo Apple: casi negro, semibold, tracking apretado. */
+.slds-scope .slds-text-heading_medium,
+.slds-scope .slds-text-heading_small,
+.slds-scope .slds-text-heading_large {
+  color: #1d1d1f !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.022em !important;
+}
+
+.slds-scope .slds-text-color_weak {
+  color: #6e6e73 !important;
+}
+
+/* Labels más sutiles. */
+.slds-scope .slds-form-element__label {
+  color: #6e6e73 !important;
+  font-size: 0.8rem !important;
+  font-weight: 500 !important;
+  margin-bottom: 0.35rem;
+}
+
+/* Inputs redondeados con anillo de foco azul Apple. */
+.slds-scope .slds-input {
+  border: 1px solid #d2d2d7 !important;
+  border-radius: 12px !important;
+  background: #fbfbfd !important;
+  height: 2.85rem !important;
+  padding: 0 0.95rem !important;
+  color: #1d1d1f !important;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.slds-scope .slds-input:focus {
+  border-color: #0071e3 !important;
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.25) !important;
+  outline: none !important;
+}
+
+/* Botón principal: azul Apple, redondeado, con feedback al pulsar. */
+.slds-scope .slds-button_brand {
+  background: #0071e3 !important;
+  border: none !important;
+  border-radius: 12px !important;
+  color: #fff !important;
+  font-weight: 500 !important;
+  min-height: 2.85rem !important;
+  transition: background 0.2s, transform 0.05s;
+}
+.slds-scope .slds-button_brand:hover {
+  background: #0077ed !important;
+}
+.slds-scope .slds-button_brand:active {
+  transform: scale(0.98);
+}
+
+/* Botón neutro redondeado. */
+.slds-scope .slds-button_neutral {
+  border-radius: 12px !important;
+  border: 1px solid #d2d2d7 !important;
+  background: #fff !important;
+  min-height: 2.6rem !important;
+}
+.slds-scope .slds-button_neutral:hover {
+  background: #f5f5f7 !important;
+}
+
+/* Enlaces en azul Apple. */
+.slds-scope a {
+  color: #0071e3 !important;
+  text-decoration: none;
+}
+.slds-scope a:hover {
+  text-decoration: underline;
+}
+
+/* Tabs suavizadas con acento azul Apple. */
+.slds-scope .slds-tabs_default__link {
+  font-weight: 500;
+}
+.slds-scope .slds-tabs_default__item.slds-is-active .slds-tabs_default__link {
+  color: #0071e3 !important;
+  border-bottom-color: #0071e3 !important;
+}
+
+/* Spinner en azul Apple. */
+.slds-scope .slds-spinner__dot-a::before,
+.slds-scope .slds-spinner__dot-b::before,
+.slds-scope .slds-spinner__dot-a::after,
+.slds-scope .slds-spinner__dot-b::after {
+  background: #0071e3 !important;
+}
+
+/* ===================== Dashboard de ventas ===================== */
+
+.dashboard {
+  padding: 2.5rem 1.25rem 4rem;
+}
+
+/* Barra superior del dashboard. */
+.dash-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.dash-greeting {
+  font-size: 1.9rem;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  color: #1d1d1f;
+  margin: 0;
+}
+.dash-subtitle {
+  color: #6e6e73;
+  margin: 0.15rem 0 0;
+  font-size: 0.95rem;
+}
+
+/* Tarjeta de métrica. */
+.metric-card {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+  padding: 1.4rem 1.5rem;
+  height: 100%;
+}
+.metric-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  margin-bottom: 0.9rem;
+}
+.metric-label {
+  color: #6e6e73;
+  font-size: 0.85rem;
+  margin: 0;
+}
+.metric-value {
+  color: #1d1d1f;
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  margin: 0.15rem 0 0.35rem;
+}
+.metric-delta {
+  font-size: 0.8rem;
+  margin: 0;
+}
+.metric-delta-up {
+  color: #1d8a4e;
+}
+.metric-delta-down {
+  color: #c0392b;
+}
+
+/* Lista de actividad reciente. */
+.activity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 0;
+  border-top: 1px solid #f0f0f2;
+}
+.activity-row:first-of-type {
+  border-top: none;
+}
+.activity-name {
+  color: #1d1d1f;
+  font-weight: 500;
+}
+.activity-meta {
+  color: #6e6e73;
+  font-size: 0.85rem;
+}
+.activity-amount {
+  color: #1d1d1f;
+  font-weight: 600;
+}
+
+/* ===================== Tarjetas de la página de inicio ===================== */
+
+.home-tile {
+  display: block;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.06);
+  padding: 1.5rem;
+  height: 100%;
+  text-decoration: none !important;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.home-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+}
+.home-tile.is-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+.home-tile-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+}
+.home-tile-title {
+  color: #1d1d1f;
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin: 0.9rem 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.home-tile-desc {
+  color: #6e6e73;
+  font-size: 0.85rem;
+  margin: 0;
+}
+.home-badge {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #6e6e73;
+  background: #f0f0f2;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  letter-spacing: 0.01em;
+}
+
+/* Enlace de navegación pequeño (volver al inicio). */
+.dash-back {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+/* ===================== Badges de rol (Configuración) ===================== */
+.role-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  letter-spacing: 0.01em;
+}
+.role-superuser {
+  background: #fde7f3;
+  color: #a3267a;
+}
+.role-admin {
+  background: #e8f3ff;
+  color: #0058a3;
+}
+.role-viewer {
+  background: #eef0f2;
+  color: #5a5a5f;
+}
+.role-user {
+  background: #eafaf0;
+  color: #1d8a4e;
+}
+
+/* ===================== Documento de cotización (impresión con estilo) ===================== */
+:root {
+  --cot-blue: #0e5e9e;
+  --cot-blue-dark: #0a4a7d;
+}
+.cot-doc {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.1);
+  color: #1d1d1f;
+  max-width: 900px;
+  margin-inline: auto;
+}
+.cot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.6rem 1.9rem;
+  background: linear-gradient(135deg, var(--cot-blue), var(--cot-blue-dark));
+  color: #fff;
+}
+.cot-logo {
+  height: 56px;
+  width: auto;
+  background: #fff;
+  padding: 8px 14px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.cot-meta {
+  text-align: right;
+  line-height: 1.25;
+}
+.cot-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+}
+.cot-folio {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.cot-fecha {
+  font-size: 0.82rem;
+  opacity: 0.85;
+}
+.cot-body {
+  padding: 1.6rem 1.9rem 1.9rem;
+}
+.cot-parties {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.4rem;
+}
+.cot-field-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #6e6e73;
+  margin-bottom: 2px;
+}
+.cot-field-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+table.cot-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.cot-table thead th {
+  background: var(--cot-blue);
+  color: #fff;
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 600;
+}
+.cot-table th.num,
+.cot-table td.num {
+  text-align: right;
+  white-space: nowrap;
+}
+.cot-table tbody td {
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid #eef0f2;
+}
+.cot-table tbody tr:nth-child(even) td {
+  background: #f6fafd;
+}
+.cot-totals {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.3rem;
+}
+.cot-totals-box {
+  min-width: 300px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.cot-totals-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.55rem 1rem;
+  font-size: 0.92rem;
+}
+.cot-totals-row span:last-child {
+  font-weight: 600;
+}
+.cot-totals-grand {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1rem;
+  background: var(--cot-blue);
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.cot-notes {
+  margin-top: 1.2rem;
+  font-size: 0.86rem;
+  color: #4a4a4f;
+}
+.cot-foot {
+  margin-top: 1.6rem;
+  padding-top: 1rem;
+  border-top: 2px solid var(--cot-blue);
+  font-size: 0.74rem;
+  color: #98a2b3;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* Impresión: oculta todo menos el documento, y conserva los colores. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .cotizacion-print,
+  .cotizacion-print * {
+    visibility: visible;
+  }
+  .cotizacion-print {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+  .cot-doc {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    max-width: 100%;
+  }
+  .no-print {
+    display: none !important;
+  }
+  /* Forzar impresión de fondos/colores (banda azul, cabeceras, etc.) */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* Celda de facultades (checkboxes en la tabla de usuarios) */
+.facultades-cell {
+  display: flex;
+  gap: 0.9rem;
+  font-size: 0.85rem;
+  color: #1d1d1f;
+  white-space: nowrap;
+}
+.facultades-cell label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.3rem;
+}

@@ -1,0 +1,513 @@
+PROYECTO: AuthApp - Sistema de login para negocio
+FECHA INICIO: 2026-05-22
+ESTADO INICIAL: Proyecto React + Node.js sin base de datos ni auth.
+
+PENDIENTES GLOBALES:
+- Implementar login con JWT
+- Implementar registro de usuario
+- Implementar recuperación de contraseña
+- Crear dashboard protegido
+- Persistencia con archivo JSON
+
+
+==================================================
+2026-05-22 12:40 - ACCIÓN: Implementación completa del sistema de autenticación (backend + frontend)
+Archivos:
+  Backend (server/):
+    - src/lib/usersRepo.js        (NUEVO) Manejador de db.json con fs (store de usuarios)
+    - src/lib/usersRepo.sql.js    (NUEVO) Versión SQL opcional (node:sqlite), misma interfaz
+    - src/controllers/authController.js (NUEVO) register/login/forgot/reset/verify
+    - src/middleware/authMiddleware.js  (NUEVO) Verificación de JWT (Bearer)
+    - src/routes/auth.js          (NUEVO) Rutas /api/auth/*
+    - src/index.js                (MODIFICADO) Monta /api/auth; ventas desactivado
+    - data/db.json                (AUTO) Se crea solo: { "users": [] }
+    - .env.example                (MODIFICADO) JWT_SECRET, JWT_EXPIRES, CLIENT_URL
+    - package.json                (MODIFICADO) + bcryptjs, jsonwebtoken
+  Frontend (client/):
+    - src/context/AuthContext.jsx (NUEVO) Estado global de auth + login/register/logout
+    - src/components/PrivateRoute.jsx (NUEVO) Protección de rutas
+    - src/pages/AuthPage.jsx      (NUEVO) Página "/" con tabs Login/Registro
+    - src/pages/Login.jsx         (NUEVO)
+    - src/pages/Register.jsx      (NUEVO)
+    - src/pages/ForgotPassword.jsx(NUEVO)
+    - src/pages/ResetPassword.jsx (NUEVO)
+    - src/pages/Dashboard.jsx     (NUEVO) Ruta protegida "Bienvenido [usuario]"
+    - src/services/api.js         (MODIFICADO) + authApi
+    - src/App.jsx                 (MODIFICADO) React Router
+    - src/main.jsx                (MODIFICADO) BrowserRouter + AuthProvider
+    - src/index.css               (MODIFICADO) Estilos de auth
+    - package.json                (MODIFICADO) + react-router-dom
+Decisiones:
+  - Persistencia por defecto: archivo JSON (server/data/db.json) con fs. NO SQL.
+  - Se incluye versión SQL opcional (usersRepo.sql.js) con la MISMA interfaz:
+    para migrar basta cambiar el import en authController.js.
+  - Hash de contraseñas con bcryptjs (JS puro) en vez de bcrypt nativo, porque
+    Node 25 aún no tiene binarios precompilados de bcrypt y fallaría al compilar.
+  - JWT con expiración 1h. Secret leído de JWT_SECRET (.env) con valor de dev por defecto.
+  - forgot-password: respuesta genérica (anti-enumeración) + enlace impreso en consola.
+    En desarrollo también se devuelve devResetUrl en la respuesta para probar fácil.
+  - Token de reset: crypto.randomBytes(32) hex, válido 1h (resetExpires).
+  - El demo de "ventas" (SQLite) del paso anterior queda en archivos pero DESCONECTADO
+    de index.js para mantener la app de auth limpia y sin SQL al arrancar.
+Dependencias instaladas:
+  - server: bcryptjs, jsonwebtoken
+  - client: react-router-dom
+Estado actual:
+  - Sistema de auth completo y funcional: registro, login, recuperación, reset,
+    dashboard protegido y verificación de token. Persistencia en db.json.
+Próximo paso:
+  - Probar el flujo completo en el navegador (npm run dev).
+  - (Opcional) Migrar a SQL cambiando el import del repositorio de usuarios.
+  - (Opcional) Integrar nodemailer para envío real de correos.
+==================================================
+
+
+==================================================
+2026-05-22 12:44 - ACCIÓN: Verificación end-to-end del backend + build del frontend
+Archivos: (sin cambios de código; solo pruebas)
+Decisiones:
+  - Se probó en el puerto 3010 porque el 3001 está ocupado por un proceso ajeno.
+Dependencias instaladas: (ninguna nueva)
+Estado actual: TODO VERIFICADO Y FUNCIONANDO:
+  1. register .................... 201 + token (auto-login)
+  2. register duplicado .......... 409 "Ese email ya está registrado"
+  3. login correcto .............. 200 + token
+  4. login incorrecto ............ 401 "Credenciales inválidas"
+  5. verify-token sin token ...... 401
+  6. verify-token con token ...... 200 { valid:true, user }
+  7. forgot-password (existe) .... 200 + enlace en consola + devResetUrl
+  8. forgot-password (no existe) . 200 respuesta genérica (anti-enumeración)
+  9. reset-password (token ok) ... 200
+  10. login con nueva clave ...... 200 OK
+  11. reset con token reusado .... 400 "Token inválido o expirado"
+  - Frontend: vite build OK (33 módulos) con React Router.
+Próximo paso:
+  - Ejecutar 'npm run dev' y validar el flujo visual en el navegador.
+==================================================
+
+
+==================================================
+2026-05-22 12:55 - ACCIÓN: Migración del frontend al diseño Salesforce Lightning Design System (SLDS)
+Archivos:
+  - client/index.html              (MODIFICADO) <link> a SLDS por CDN + body.slds-scope
+  - client/src/index.css           (MODIFICADO) Reducido a lo estructural (viewport/centrado)
+  - client/src/pages/AuthPage.jsx  (MODIFICADO) slds-box + slds-tabs_default
+  - client/src/pages/Login.jsx     (MODIFICADO) slds-form-element/__control/__label, slds-input, slds-button_brand_stretch
+  - client/src/pages/Register.jsx  (MODIFICADO) idem
+  - client/src/pages/ForgotPassword.jsx (MODIFICADO) idem + mensajes con slds-text-color_*
+  - client/src/pages/ResetPassword.jsx  (MODIFICADO) idem
+  - client/src/pages/Dashboard.jsx (MODIFICADO) slds-box centrado + slds-button_neutral
+  - client/src/components/PrivateRoute.jsx (MODIFICADO) slds-spinner para "cargando"
+Decisiones:
+  - Estructura, textos, jerarquía y JS intactos: solo cambió la capa de presentación.
+  - IMPORTANTE: la URL pedida (lightningdesignsystem.com/.../min.css) devuelve 404.
+    Se reemplazó por la CDN del paquete oficial @salesforce-ux/design-system vía
+    jsDelivr, FIJADA a v2.29.2 (la última publicada). 200 OK, ~913 KB.
+  - Mapa de equivalencias SLDS:
+      tarjeta        -> .slds-box .slds-theme_default
+      tabs           -> .slds-tabs_default (+ .slds-is-active)
+      campos         -> .slds-form-element / __label / __control + .slds-input
+      botones        -> .slds-button .slds-button_brand .slds-button_stretch (y _neutral)
+      errores/éxito  -> .slds-text-color_error / _success
+      cargando       -> .slds-spinner .slds-spinner_medium
+      espaciados     -> utilidades .slds-m-*_*, .slds-p-*_*, .slds-text-align_center
+  - SLDS no tiene utilidad de alto de viewport: se mantienen .auth-shell/.auth-card
+    en index.css solo para centrado a pantalla completa y ancho de la tarjeta.
+Dependencias instaladas: (ninguna; SLDS se carga por CDN, no por npm)
+Estado actual:
+  - vite build OK (33 módulos). CDN v2.29.2 verificada (200). Las 16 clases SLDS
+    usadas existen en la hoja oficial. Falta validación visual en navegador.
+Próximo paso:
+  - Ejecutar 'npm run dev' y revisar el aspecto en el navegador.
+==================================================
+
+
+==================================================
+2026-05-22 13:02 - ACCIÓN: Script de arranque iniciar-app.bat (basado en el del Desktop)
+Archivos:
+  - iniciar-app.bat (NUEVO, en la raíz del proyecto)
+Decisiones:
+  - Se tomó como base C:\Users\...\Desktop\iniciar-app.bat (app de un solo server).
+  - Adaptado a este proyecto full-stack: en vez de 'node index.js' usa 'npm run dev'
+    en la RAÍZ (workspaces), que levanta frontend (5173) + backend (3001) con concurrently.
+  - El navegador abre el FRONTEND (http://localhost:5173), no el 3001.
+  - Se mantiene el patrón del original: instala deps si falta node_modules, banner,
+    tecla [Q] para reiniciar (taskkill node.exe), y bucle :inicio.
+  - Sin acentos en los echo para evitar mojibake del codepage de la consola .bat.
+  - CAVEAT heredado del original: 'taskkill /f /im node.exe' mata TODOS los procesos
+    node del equipo, no solo los de la app.
+Dependencias instaladas: (ninguna)
+Estado actual: Script creado. No ejecutado (abre navegador y levanta servidores).
+Próximo paso:
+  - Doble clic en iniciar-app.bat para arrancar. Liberar el puerto 3001 si está ocupado.
+==================================================
+
+
+==================================================
+2026-05-22 13:15 - ACCIÓN: Enfoque a ventas + toques de diseño tipo Apple sobre SLDS
+Archivos:
+  - client/index.html              (MODIFICADO) <title> AuthApp -> Ventas
+  - client/src/index.css           (MODIFICADO) Capa "Apple touch" sobre SLDS + estilos del dashboard
+  - client/src/pages/AuthPage.jsx  (MODIFICADO) Marca "Ventas" + subtítulo "Accede a tu panel de ventas"
+  - client/src/pages/Dashboard.jsx (MODIFICADO) Panel de ventas: métricas (grid SLDS) + ventas recientes
+Decisiones:
+  - El usuario eligió MANTENER SLDS y suavizarlo con toques Apple (no Apple puro).
+  - Capa de overrides en index.css prefijada con .slds-scope (+ !important) para
+    ganar a SLDS sin depender del orden de carga. Cambios: tipografía del sistema
+    (SF Pro en Apple), fondo #f5f5f7, tarjetas radius 20px + sombra suave, inputs
+    radius 12px con anillo de foco azul, botón brand azul Apple #0071e3, enlaces azules.
+  - Rebrand de "AuthApp" a "Ventas" (sin tocar la lógica de auth).
+  - Dashboard rediseñado: ya no es la tarjeta angosta; usa .slds-container_large
+    + grid responsivo (.slds-grid/.slds-col, 1/2/4 columnas según ancho) con 4
+    tarjetas de métrica y una lista de "Ventas recientes".
+  - IMPORTANTE: las métricas y la actividad son DATOS DE MUESTRA (placeholder),
+    no vienen del backend. Hay nota visible en el dashboard avisándolo.
+Dependencias instaladas: (ninguna)
+Estado actual:
+  - vite build OK (33 módulos, CSS 3.56 kB). Clases de grid SLDS verificadas en CDN.
+  - Falta validación visual en navegador.
+Próximo paso:
+  - 'npm run dev' y revisar aspecto. (Opcional) reconectar el backend de ventas
+    para mostrar métricas/ventas reales en el dashboard.
+==================================================
+
+
+==================================================
+2026-05-22 13:28 - ACCIÓN: Página de inicio tras login (placeholder, sin funcionalidad)
+Archivos:
+  - client/src/pages/Inicio.jsx    (NUEVO) Home protegido con tiles de secciones
+  - client/src/App.jsx             (MODIFICADO) + ruta protegida /inicio
+  - client/src/pages/Login.jsx     (MODIFICADO) redirige a /inicio (antes /dashboard)
+  - client/src/pages/Register.jsx  (MODIFICADO) redirige a /inicio
+  - client/src/pages/AuthPage.jsx  (MODIFICADO) si hay sesión -> /inicio
+  - client/src/pages/Dashboard.jsx (MODIFICADO) enlace "← Inicio" en la barra
+  - client/src/index.css           (MODIFICADO) estilos .home-tile/.home-badge/.dash-back
+Decisiones:
+  - Tras iniciar sesión (o registrarse) ahora se entra a /inicio, no a /dashboard.
+  - /inicio es un placeholder: 6 tarjetas (Dashboard, Ventas, Clientes, Productos,
+    Reportes, Configuración) en grid responsivo SLDS (1/2/3 columnas).
+    Solo "Dashboard" enlaza a una pantalla real; el resto muestra "Próximamente"
+    y están deshabilitadas (sin funcionalidad, como se pidió).
+  - El Dashboard ganó un enlace "← Inicio" para no quedar como callejón sin salida.
+  - Mantiene estilo SLDS + toques Apple ya existentes.
+Dependencias instaladas: (ninguna)
+Estado actual: vite build OK (34 módulos). Flujo: login -> /inicio -> (tile) /dashboard.
+Próximo paso:
+  - Ir dando funcionalidad a las secciones (Ventas, Clientes, etc.) cuando se decida.
+==================================================
+
+
+==================================================
+2026-05-22 13:50 - ACCIÓN: Página de Configuración + sistema de roles y permisos (desde la base)
+Archivos:
+  Backend (server/):
+    - src/lib/permissions.js         (NUEVO) Roles, SUPERUSER_EMAIL, effectiveRole, permissionsFor
+    - src/lib/usersRepo.js           (MODIFICADO) create con role; + all() y remove()
+    - src/lib/usersRepo.sql.js       (MODIFICADO) columna role; + all()/remove() (parity)
+    - src/middleware/permissions.js  (NUEVO) requireUsersView / requireUsersEdit
+    - src/controllers/usersController.js (NUEVO) listUsers / updateUser / deleteUser
+    - src/controllers/authController.js  (MODIFICADO) sanitize expone role efectivo
+    - src/routes/users.js            (NUEVO) GET / PATCH:id / DELETE:id
+    - src/index.js                   (MODIFICADO) monta /api/users
+  Frontend (client/):
+    - src/lib/permissions.js         (NUEVO) espejo de permisos para la UI + ROLE_LABELS
+    - src/services/api.js            (MODIFICADO) authHeaders() + usersApi (list/update/remove)
+    - src/pages/Configuracion.jsx    (NUEVO) tabla de usuarios, edición de rol, eliminar
+    - src/pages/Inicio.jsx           (MODIFICADO) tile Configuración enlaza si canViewUsers
+    - src/App.jsx                    (MODIFICADO) ruta protegida /configuracion
+    - src/index.css                  (MODIFICADO) badges de rol (.role-*)
+Decisiones:
+  - Roles: superuser / admin (ver+modificar) / viewer (solo ver) / user (sin acceso).
+  - SUPERUSER por EMAIL fijo: nevoli.gonzalez@lcg.mx -> siempre superuser y ve todo.
+    Se fuerza en backend (effectiveRole) y se refleja en el frontend.
+  - Facultades: canViewUsers (vista) y canEditUsers (modificación).
+  - Seguridad en DOBLE capa: backend valida en cada endpoint (middleware), frontend
+    solo muestra/oculta controles. NUNCA se confía solo en el cliente.
+  - Reglas: superusuario intocable; solo el superusuario asigna/edita admins; viewer
+    no modifica; no puedes eliminarte a ti mismo.
+  - Usuarios nuevos -> rol 'user' por defecto (sin acceso a Configuración).
+Dependencias instaladas: (ninguna)
+Estado actual: VERIFICADO. Backend de roles probado end-to-end (superuser/admin/viewer
+  y todos los bloqueos 403). vite build OK (clases SLDS de tabla/select válidas).
+  Falta validación visual en navegador.
+Próximo paso:
+  - 'npm run dev', entrar como nevoli.gonzalez@lcg.mx y gestionar usuarios.
+==================================================
+
+
+==================================================
+2026-05-22 14:20 - ACCIÓN: Conexión a base de datos REAL: Microsoft SQL Server (mssql)
+Archivos:
+  - server/src/lib/usersRepo.mssql.js (NUEVO) Repo sobre SQL Server (driver mssql), async
+  - server/src/lib/usersStore.js      (REESCRITO) Selector 3 motores (mssql/sqlite/json) con import dinámico
+  - server/src/controllers/authController.js  (MODIFICADO) await en todas las llamadas al repo
+  - server/src/controllers/usersController.js (MODIFICADO) funciones async + await
+  - server/src/middleware/permissions.js      (MODIFICADO) async + await
+  - server/src/lib/usersRepo.sql.js   (MODIFICADO antes) + importUser para migración
+  - server/package.json               (MODIFICADO) + mssql ^11
+  - server/.env.example               (MODIFICADO) DB_DRIVER + DB_USER/PASSWORD/SERVER/PORT/NAME
+  - server/.env                       (NUEVO, no versionado) DB_DRIVER=mssql + credenciales
+Decisiones:
+  - El usuario reveló (selección IDE) que usa SQL Server: server localhost, puerto 1433,
+    base Base_ventas, usuario sa, password nevoli123, mssql config con
+    trustServerCertificate. Se replicó EXACTA esa config (mismos nombres de env).
+  - CAMBIO ARQUITECTÓNICO: la interfaz del repo pasó a ASYNC (mssql es asíncrono).
+    Los repos json/sqlite siguen síncronos pero los callers usan await (no-op para
+    valores síncronos), así un solo código sirve a los 3 motores.
+  - Selector con import DINÁMICO: solo se carga el módulo del motor elegido (no exige
+    instalar mssql si usas sqlite/json). Top-level await en usersStore.js (ESM).
+  - Migración JSON->SQLite automática (solo en modo sqlite). Para mssql no aplica
+    (db.json vacío) pero importUser existe en los 3 repos.
+Dependencias instaladas: mssql ^11 (driver tedious, JS puro, sin compilación)
+Estado actual: VERIFICADO CONTRA SQL SERVER REAL:
+  - Conexión OK a SQL Server 2025 / base Base_Ventas (login sa).
+  - Tabla 'users' se autocrea si no existe.
+  - register (superuser por email + user normal), list y roles -> OK.
+  - PERSISTENCIA REAL: tras reiniciar el servidor, login funciona y los usuarios
+    siguen en la BD (no se pierden). Datos de prueba limpiados (tabla vacía y lista).
+Próximo paso:
+  - 'npm run dev' (lee server/.env, DB_DRIVER=mssql) y registrar nevoli.gonzalez@lcg.mx.
+  - Para volver a SQLite/JSON sin tocar código: cambiar DB_DRIVER en server/.env.
+==================================================
+
+
+==================================================
+2026-05-22 15:10 - ACCIÓN: FASE 1 - Facultades + Configuración de ventas (catálogo y tabuladores)
+Archivos:
+  Backend (server/):
+    - src/lib/mssql.js              (NUEVO) Pool compartido + esquema (users + unidades/clientes/productos/tipos_venta)
+    - src/lib/usersRepo.mssql.js    (REESCRITO) usa pool compartido + columna facultades
+    - src/lib/catalogoRepo.mssql.js (NUEVO) CRUD unidades/clientes/productos/tiposVenta
+    - src/lib/permissions.js        (MODIFICADO) FACULTADES, facultadesDe, permissionsFor.facultades
+    - src/middleware/permissions.js (MODIFICADO) requireFaculty(key)
+    - src/controllers/catalogoController.js (NUEVO) + validaciones (modalidad, precio min<=max)
+    - src/controllers/usersController.js    (MODIFICADO) sanitize+facultades; updateUser asigna facultades
+    - src/controllers/authController.js     (MODIFICADO) sanitize expone facultades
+    - src/routes/catalogo.js        (NUEVO) /api/catalogo/* (ver->ventasVer, editar->ventasModificar)
+    - src/index.js                  (MODIFICADO) monta /api/catalogo
+  Frontend (client/):
+    - src/lib/permissions.js        (MODIFICADO) FACULTADES, facultadesDe, permissionsFor.facultades
+    - src/services/api.js           (MODIFICADO) catalogoApi (unidades/clientes/productos/tipos)
+    - src/pages/ConfiguracionVentas.jsx (NUEVO) tabs Productos/Clientes/Unidades + tabuladores CRUD
+    - src/pages/Configuracion.jsx   (MODIFICADO) columna Facultades (checkboxes Ver/Modificar)
+    - src/pages/Inicio.jsx          (MODIFICADO) tiles "Configuración de ventas" (gated ventasVer) y "Venta" (Próximamente)
+    - src/App.jsx                   (MODIFICADO) ruta /configuracion-ventas
+    - src/index.css                 (MODIFICADO) .facultades-cell
+Decisiones:
+  - Modelo: productos/servicios con unidad; cada producto tiene varios TIPOS DE VENTA
+    (tabuladores) con modalidad (unidad|paquete|contrato), cantidad/mínimo y precio_min/max.
+    Ej.: "Paquete 10" (cantidad=10), "Contrato anual" (modalidad=contrato, años, min 1).
+  - FACULTADES granulares y asignables: ventasVer / ventasModificar. Superusuario
+    (nevoli.gonzalez@lcg.mx) las tiene TODAS siempre. Se asignan desde la página de
+    usuarios (checkboxes). Default de usuarios nuevos: ambas en false.
+  - Backend valida facultades por endpoint (requireFaculty). Catálogo SOLO en SQL Server.
+  - Snapshot de precios se hará en la venta (Fase 2), no aquí.
+Dependencias instaladas: (ninguna nueva; mssql ya estaba)
+Estado actual: VERIFICADO contra SQL Server: facultades (asignación + bloqueos 403),
+  CRUD de unidades/clientes/productos y tipos de venta, validaciones (paquete sin
+  cantidad 400, precio max<min 400). vite build OK (37 módulos). Datos de prueba limpiados.
+Próximo paso (FASE 2):
+  - Página "Venta" (transacción): elegir cliente + líneas (producto/tipo de venta),
+    validar cantidad>=mínimo y precio dentro de [min,max], calcular total, guardar/
+    editar/eliminar con snapshot en venta_items. Tablas ventas + venta_items.
+==================================================
+
+
+==================================================
+2026-05-22 16:00 - ACCIÓN: FASE 2 - Página de Venta (transacciones) usando el catálogo
+Archivos:
+  Backend (server/):
+    - src/lib/mssql.js              (MODIFICADO) + tablas ventas y venta_items
+    - src/lib/ventasRepo.mssql.js   (NUEVO) create/update con transacción (venta + líneas)
+    - src/lib/catalogoRepo.mssql.js (MODIFICADO) + clientes.find y tiposVenta.find
+    - src/controllers/ventasController.js (SOBRESCRITO el demo viejo) validación + total en servidor
+    - src/routes/ventas.js          (SOBRESCRITO) /api/ventas/* (ver->ventasVer, editar->ventasModificar)
+    - src/index.js                  (MODIFICADO) monta /api/ventas (quitado el demo comentado)
+  Frontend (client/):
+    - src/services/api.js           (MODIFICADO) + ventasApi (list/get/create/update/remove)
+    - src/pages/Venta.jsx           (NUEVO) registra ventas con catálogo + tabuladores
+    - src/pages/Inicio.jsx          (MODIFICADO) tile "Venta" activo (gated ventasVer)
+    - src/App.jsx                   (MODIFICADO) ruta /ventas
+Decisiones:
+  - La venta tiene líneas; cada línea = producto + tipo de venta (tabulador) + cantidad + precio.
+  - El SERVIDOR valida (cantidad>=mínimo, precio en [min,max]) y CALCULA subtotal/total
+    (no se confía en el cliente). Se guarda SNAPSHOT (descripcion, modalidad, unidad,
+    precio) en venta_items para que cambios futuros del catálogo no alteren ventas viejas.
+  - venta + líneas se guardan en TRANSACCIÓN (atómico). Editar = reemplaza las líneas.
+  - El demo viejo de ventas (db.js sqlite + seed.json) quedó huérfano (ya no se importa).
+  - Facultades reutilizadas: ventasVer (ver), ventasModificar (registrar/editar/eliminar).
+Dependencias instaladas: (ninguna)
+Estado actual: VERIFICADO contra SQL Server: venta válida (total calculado + snapshot),
+  precio fuera de rango -> 400, cantidad inválida -> 400, listar/detalle/actualizar/
+  eliminar OK. vite build OK (38 módulos). Datos de prueba limpiados.
+Próximo paso:
+  - 'npm run dev', configurar catálogo y registrar ventas. (Opcional) reportes,
+    o separar una facultad 'ventasRegistrar' distinta de 'ventasModificar' (config).
+==================================================
+
+
+==================================================
+2026-05-22 16:30 - ACCIÓN: Reencuadre del módulo Venta a COTIZACIÓN (simulación)
+Archivos:
+  Backend (server/):
+    - src/lib/mssql.js            (MODIFICADO) + columna folio en ventas (ALTER si falta)
+    - src/lib/ventasRepo.mssql.js (MODIFICADO) genera folio 'COT-0001' (count+1) al crear
+  Frontend (client/):
+    - src/pages/Cotizaciones.jsx  (NUEVO; reemplaza a Venta.jsx) reencuadre + folio + vista imprimible
+    - src/pages/Venta.jsx         (ELIMINADO)
+    - src/App.jsx                 (MODIFICADO) ruta /ventas -> /cotizaciones, importa Cotizaciones
+    - src/pages/Inicio.jsx        (MODIFICADO) tile "Venta" -> "Cotización" (-> /cotizaciones)
+    - src/index.css               (MODIFICADO) @media print (.cotizacion-print / .no-print)
+Decisiones:
+  - El usuario aclaró: el módulo de "ventas" es una SIMULACIÓN tipo COTIZACIÓN, no
+    una venta cerrada. Se reencuadró la UI a "Cotización/Cotizaciones".
+  - Se mantienen mismas tablas (ventas/venta_items) y lógica (catálogo, tabuladores,
+    validación cantidad>=mínimo y precio en [min,max], total en servidor, snapshot).
+  - NUEVO: folio legible por cotización (COT-0001...) y VISTA IMPRIMIBLE (botón Ver +
+    Imprimir con window.print(); @media print aísla .cotizacion-print).
+  - Backend NO se renombró (sigue /api/ventas, tablas ventas/*) para evitar churn;
+    solo cambia la cara al usuario. Si se quiere, después renombrar a cotizaciones.
+Dependencias instaladas: (ninguna)
+Estado actual: build OK; folio verificado (COT-0001, COT-0002). Datos de prueba limpiados.
+Próximo paso:
+  - 'npm run dev' y probar el flujo de cotización + imprimir. (Opcional) vigencia,
+    estatus (borrador/enviada/aceptada), o exportar PDF.
+==================================================
+
+
+==================================================
+2026-05-22 17:00 - ACCIÓN: Nuevo modelo de tabulador (contrato 1-6 años) y fórmula cantidad×años×tarifa
+Archivos:
+  Backend (server/):
+    - src/lib/mssql.js              (MODIFICADO) tipos_venta: quita modalidad/minimo, usa cantidad;
+                                    venta_items: quita modalidad, agrega anios. + migración (ALTER) de tablas viejas.
+    - src/lib/catalogoRepo.mssql.js (MODIFICADO) tiposVenta create/update: nombre, cantidad, precio_min, precio_max
+    - src/controllers/catalogoController.js (MODIFICADO) validarTipo: cantidad>0 entero; tarifa min<=max
+    - src/controllers/ventasController.js   (MODIFICADO) construirLineas: años 1-6; cantidad del tabulador;
+                                    tarifa en [min,max]; subtotal = cantidad × años × tarifa
+    - src/lib/ventasRepo.mssql.js   (MODIFICADO) venta_items con anios (sin modalidad)
+  Frontend (client/):
+    - src/pages/ConfiguracionVentas.jsx (MODIFICADO) tabulador = nombre + cantidad + tarifa(min/max); sin modalidad/mínimo
+    - src/pages/Cotizaciones.jsx        (MODIFICADO) al cotizar: tabulador -> años(1-6) -> tarifa; subtotal=cant×años×tarifa
+Decisiones (aclaración del usuario):
+  - Se ELIMINA modalidad (ya no unidad/paquete). Todo es CONTRATO, 1-6 años (mín 1).
+  - El campo 'minimo' desaparece; el tabulador ahora tiene 'cantidad' (nivel: 10, 20, 40...).
+  - precio_min/precio_max = TARIFA por la que se multiplica.
+  - Captura: cantidad en el tabulador (config); años (1-6) y tarifa al cotizar.
+  - FÓRMULA: subtotal de línea = cantidad × años × tarifa (validado/calculado en servidor).
+  - Migración idempotente en mssql.js para tablas existentes (drop modalidad/minimo, add anios).
+Dependencias instaladas: (ninguna)
+Estado actual: VERIFICADO contra SQL Server: tabulador (cant 10, tarifa 400-600);
+  cotización 10×3×500=15000; años fuera de 1-6 ->400; tarifa fuera de rango ->400;
+  cantidad 0 ->400. vite build OK. Datos de prueba limpiados.
+Próximo paso:
+  - 'npm run dev', reconfigurar tabuladores con el nuevo modelo y cotizar.
+==================================================
+
+
+==================================================
+2026-05-22 17:20 - ACCIÓN: Diagnóstico "se borran datos al reiniciar" (NO era el servidor)
+Archivos: (sin cambios de código de la app)
+Decisiones / hallazgo:
+  - El servidor NO borra datos al reiniciar. Verificado: registré un usuario,
+    reinicié el server, e hice login OK -> el dato sobrevivió.
+  - El código del servidor solo tiene 'DELETE ... WHERE id=@id' (borrado puntual
+    cuando el usuario pulsa Eliminar). No hay DROP/TRUNCATE/DELETE masivo en el arranque.
+  - CAUSA REAL: mis scripts de verificación corrían 'DELETE FROM <todas las tablas>'
+    al final de cada prueba, borrando los datos reales de Base_ventas. ESO se detiene.
+  - FIX PERMANENTE: se creó la base aislada 'Base_ventas_test'. Mis verificaciones
+    usarán DB_NAME=Base_ventas_test; NUNCA más SQL destructivo contra Base_ventas.
+  - NOTA: Base_ventas quedó vacía por esas limpiezas pasadas; hay que recrear los datos.
+Dependencias instaladas: (ninguna)
+Estado actual: persistencia confirmada. Base_ventas intacta de aquí en adelante.
+Próximo paso:
+  - El usuario recrea su catálogo/datos en 'npm run dev'; no se vuelven a borrar.
+==================================================
+
+
+==================================================
+2026-05-22 18:00 - ACCIÓN: Modelo de RANGOS por unidades (como la hoja del asesor)
+Archivos:
+  Backend (server/):
+    - src/lib/mssql.js              (MODIFICADO) tipos_venta -> rangos (unidades_min/max + precio_piso/lista);
+                                    venta_items + ingreso_mensual/ingreso_anual. Migración idempotente.
+    - src/lib/catalogoRepo.mssql.js (MODIFICADO) tiposVenta create/update con rangos
+    - src/controllers/catalogoController.js (MODIFICADO) normalizarRango (unidades_min<=max, piso<=lista, max vacío=sin tope)
+    - src/controllers/ventasController.js   (MODIFICADO) auto-rango por cantidad; precio en [piso,lista];
+                                    mensual=precio×unidades; anual=×12; subtotal(contrato)=anual×años
+    - src/lib/ventasRepo.mssql.js   (MODIFICADO) venta_items con ingreso_mensual/anual
+  Frontend (client/):
+    - src/pages/ConfiguracionVentas.jsx (MODIFICADO) rangos: nombre + unidades_min/max + precio_piso/lista
+    - src/pages/Cotizaciones.jsx        (MODIFICADO) unidades -> rango auto -> años -> precio; columnas mensual/anual/total + TOTALES
+Decisiones (según hoja del asesor de ventas, con imágenes):
+  - Producto se vende CON servicio. Precios por RANGO de unidades (10-20, 21-60, ...).
+  - precio_lista = referencia (tope), precio_piso = mínimo, por unidad/mes.
+  - Al cotizar: escribes unidades -> rango automático -> precio unitario en banda [piso,lista] -> años 1-6.
+  - FÓRMULA: mensual = precio × unidades; anual = mensual × 12; total contrato = anual × años.
+  - Total de la cotización = suma de totales de contrato (se muestran también totales mensual y anual).
+  - unidades_max vacío/NULL = "más de" (sin tope superior).
+Dependencias instaladas: (ninguna)
+Estado actual: VERIFICADO en Base_ventas_test (NO se tocó Base_ventas): rangos como la hoja;
+  50 unid a 4490 1 año -> mensual 224500, anual 2,694,000, total 2,694,000; a 3 años 8,082,000;
+  precio fuera de banda ->400; 5 unidades sin rango ->400; 250 -> 'Más de 200'. vite build OK.
+Próximo paso:
+  - 'npm run dev', configurar los rangos por producto y cotizar por unidades.
+==================================================
+
+
+==================================================
+2026-05-22 19:00 - ACCIÓN: Modelar el Excel SITEM (Downloads/Copia.xlsx) - Fases 1 y 2
+Contexto: El usuario quiere que la app modele su Excel (CRM de SITEM, 7 hojas):
+  tabulador privado/público, cotizador, pipeline, ventas logradas, comisiones, metas.
+  Se eligió construir TODO por fases. Excel guardado en memoria (reference-excel-sitem).
+FASE 1 (hecha) - Config: vender más cosas
+  - server/src/lib/mssql.js: + columna 'sector' en productos, + 'segmento' en tipos_venta (ALTER idempotente)
+  - catalogoRepo/catalogoController: create/update con sector y segmento
+  - client ConfiguracionVentas.jsx: campo Sector en producto, Segmento sugerido en rango
+  - "Vender más cosas" = crear más productos (cada sector = un producto con sus rangos)
+FASE 2 (hecha) - Pipeline / Forecast
+  - server/src/lib/mssql.js: tabla 'oportunidades'
+  - server/src/lib/oportunidadesRepo.mssql.js (NUEVO)
+  - server/src/controllers/oportunidadesController.js (NUEVO): usa catálogo (rango auto por unidades,
+    precio en banda), calcula ingreso_mensual/anual, valor_total=anual×años, valor_ponderado=valor×prob.
+    Etapas: Prospecting/Discovery/Proposal/Negotiation/Won/Lost.
+  - server/src/routes/oportunidades.js (NUEVO) /api/oportunidades (gated facultades), montado en index.js
+  - client: oportunidadesApi (api.js), pages/Pipeline.jsx (NUEVO), ruta /pipeline, tile en Inicio
+  - Forecast = suma de valores ponderados. Resumen con métricas (count, total pipeline, forecast).
+Verificación: en Base_ventas_test (NO Base_ventas). Pipeline replica EXACTO la fila del Excel
+  (190 unid×3950, 3 años, 25% -> anual 9,006,000, valor 27,018,000, ponderado 6,754,500). build OK.
+PENDIENTE:
+  - FASE 3: Ventas logradas (registro de cierres por mes/trimestre, acumulado) + Comisiones
+    (% por tipo: nueva 8%, renovación 2.5%, referida 5%; comisión = ingreso × %).
+  - FASE 4: Metas de Venta (calculadora de contratos por mes/trimestre -> unidades e ingreso).
+==================================================
+
+
+==================================================
+2026-05-22 19:20 - ACCIÓN: Renombrar "Total del contrato" -> "Total estimado" en Cotizaciones
+Archivos: client/src/pages/Cotizaciones.jsx
+Decisiones:
+  - El usuario aclaró que la cotización es una ESTIMACIÓN por línea, así que el gran
+    total no debe llamarse "Total del contrato". Ahora: columna por línea = "Estimado",
+    gran total/lista/impresión = "Total estimado". (La fórmula no cambia: estimado por
+    línea = anual × años; total estimado = suma.)
+Estado actual: build OK. Solo cambio de etiquetas (sin tocar backend).
+==================================================
+
+
+==================================================
+2026-05-22 19:45 - ACCIÓN: Cotización imprimible con diseño profesional + logo LCG
+Archivos:
+  - client/public/logo.png            (NUEVO) copiado de Downloads/log.png (LCG, 1249x382)
+  - client/src/pages/Cotizaciones.jsx (MODIFICADO) vista imprimible -> documento .cot-doc
+  - client/src/index.css              (MODIFICADO) estilos .cot-* + @media print a color
+Decisiones:
+  - La cotización impresa ahora es un DOCUMENTO con estilo: encabezado azul corporativo
+    (degradado) con LOGO LCG a la izquierda y "COTIZACIÓN" + folio + fecha a la derecha;
+    datos de cliente/vigencia; tabla con cabecera azul y filas zebra; caja de totales
+    (mensual, anual y "Total estimado" destacado); pie con disclaimer y marca.
+  - Color de marca tomado del logo (~#0e5e9e). Botones Imprimir/Cerrar fuera del doc (.no-print).
+  - @media print: oculta todo menos .cotizacion-print y fuerza print-color-adjust:exact
+    para que la banda azul y las cabeceras impriman a color.
+Estado actual: build OK; logo en dist/logo.png. Falta verlo en navegador (Cotizaciones -> Ver -> Imprimir).
+==================================================

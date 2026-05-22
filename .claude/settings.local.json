@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la)",
+      "Bash(git status *)",
+      "Read(//c/Users/Desarrollador web/.claude/projects/c--Users-Desarrollador-web-Documents-Ventas-ventas/memory/**)",
+      "Bash(npm -v)",
+      "Bash(mkdir -p client/public client/src/pages client/src/services client/src/components server/src/routes server/src/controllers)",
+      "Bash(mv public/favicon.svg client/public/)",
+      "Bash(mv public/icons.svg client/public/)",
+      "Bash(rm -rf public src index.html package-lock.json node_modules)",
+      "Bash(npm install *)",
+      "Bash(netstat -ano)",
+      "Bash(rm -f server/ventas.db server/ventas.db-journal)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code} | tipo: %{content_type} | tamaño: %{size_download} bytes\\\\n\" https://www.lightningdesignsystem.com/assets/styles/salesforce-lightning-design-system.min.css)",
+      "Bash(curl -s -o /dev/null -w 'HTTP %{http_code} | %{size_download} bytes | v2.29.2\\\\n' -L https://cdn.jsdelivr.net/npm/@salesforce-ux/design-system@2.29.2/assets/styles/salesforce-lightning-design-system.min.css)",
+      "Bash(curl -s -L \"https://cdn.jsdelivr.net/npm/@salesforce-ux/design-system@2.29.2/assets/styles/salesforce-lightning-design-system.min.css\" -o /tmp/slds.css)",
+      "Read(//tmp/**)",
+      "Bash(ls -la \"C:\\\\Users\\\\Desarrollador web\\\\Desktop\\\\\" | grep -i iniciar; echo \"---\"; ls -la \"C:\\\\Users\\\\Desarrollador web\\\\Desktop\\\\iniciar-app\" 2>/dev/null || echo \"no es archivo directo, busco con extensiones...\")",
+      "Read(//c/Users/Desarrollador web/**)",
+      "Bash(grep -q '\\\\.__TRACKED_VAR__' /tmp/slds.css)",
+      "Bash(node --input-type=module -e ' *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Desarrollador web\\.claude\\projects\\c--Users-Desarrollador-web-Documents-Ventas-ventas\\memory"
+    ]
+  }
+}
