@@ -1,6 +1,9 @@
 // Punto de arranque del servidor Express (AuthApp).
 import express from 'express'
 import cors from 'cors'
+import path from 'node:path'
+import fs from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import authRouter from './routes/auth.js'
 import usersRouter from './routes/users.js'
 import catalogoRouter from './routes/catalogo.js'
@@ -33,6 +36,22 @@ app.use('/api/ventas', ventasRouter)
 
 // Rutas de Pipeline / Forecast.
 app.use('/api/oportunidades', oportunidadesRouter)
+
+// ---- Frontend de React ya compilado (producción / Plesk) ----
+// El cliente usa rutas relativas /api, así que servir el build desde el MISMO
+// servidor evita CORS y problemas de URL. Solo se activa si existe client/dist
+// (en desarrollo se usa Vite en :5173, así que este bloque se ignora).
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const clientDist = path.resolve(__dirname, '../../client/dist')
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist))
+  // Cualquier ruta que NO sea /api devuelve index.html (React Router en cliente).
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next()
+    res.sendFile(path.join(clientDist, 'index.html'))
+  })
+  console.log(`[server] Sirviendo frontend desde ${clientDist}`)
+}
 
 app.listen(PORT, () => {
   console.log(`[server] API escuchando en http://localhost:${PORT}`)

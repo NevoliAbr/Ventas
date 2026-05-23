@@ -1,5 +1,5 @@
 // Controlador del catálogo de ventas: unidades, clientes, productos y tipos de venta.
-import { unidades, clientes, productos, tiposVenta } from '../lib/catalogoRepo.mssql.js'
+import { unidades, clientes, productos, tiposVenta } from '../lib/catalogoStore.js'
 
 const TIPOS_PRODUCTO = ['producto', 'servicio']
 

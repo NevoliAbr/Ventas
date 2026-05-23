@@ -1,7 +1,7 @@
 // Pipeline / Forecast: oportunidades de venta. Usa el catálogo (rango automático
 // por unidades, precio en banda piso/lista). Calcula valor de contrato y ponderado.
-import { oportunidadesRepo } from '../lib/oportunidadesRepo.mssql.js'
-import { productos, tiposVenta } from '../lib/catalogoRepo.mssql.js'
+import { oportunidadesRepo } from '../lib/oportunidadesStore.js'
+import { productos, tiposVenta } from '../lib/catalogoStore.js'
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100
 const ETAPAS = ['Prospecting', 'Discovery', 'Proposal', 'Negotiation', 'Won', 'Lost']

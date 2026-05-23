@@ -1,8 +1,8 @@
 // Controlador de ventas (transacciones). Valida cada línea contra su tabulador:
 // cantidad >= mínimo y precio dentro de [precio_min, precio_max]. El total se
 // calcula en el servidor (no se confía en el cliente) y se guarda snapshot.
-import { ventasRepo } from '../lib/ventasRepo.mssql.js'
-import { productos, clientes, tiposVenta, unidades } from '../lib/catalogoRepo.mssql.js'
+import { ventasRepo } from '../lib/ventasStore.js'
+import { productos, clientes, tiposVenta, unidades } from '../lib/catalogoStore.js'
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100
 

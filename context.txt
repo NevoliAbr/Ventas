@@ -511,3 +511,80 @@ Decisiones:
     para que la banda azul y las cabeceras impriman a color.
 Estado actual: build OK; logo en dist/logo.png. Falta verlo en navegador (Cotizaciones -> Ver -> Imprimir).
 ==================================================
+
+
+==================================================
+2026-05-22 20:10 - ACCIÓN: Inicializar repo Git y subir el proyecto a GitHub
+Archivos:
+  - server/.env.example (MODIFICADO) DB_PASSWORD real "nevoli123" -> placeholder
+    "tu-contraseña-de-sql-server" (evitar publicar credencial real al subir a GitHub)
+Decisiones:
+  - git init + commit inicial (rama main) con los 57 archivos del proyecto.
+  - .gitignore ya excluía node_modules, .env y server/data/db.json -> NO se subieron secretos.
+  - Remoto: https://github.com/NevoliAbr/Ventas.git (HTTPS). El token se pasó por variable
+    de entorno + credential helper inline; NO se guardó en .git/config (verificado).
+  - Hubo confusión de cuentas: la clave SSH/primer token eran de NevoliLCG (sin acceso al
+    repo de NevoliAbr -> 403). Se resolvió con un PAT fine-grained de NevoliAbr CON permiso
+    "Contents: Read and write" (el primer PAT solo tenía metadata=read).
+Estado actual: push OK. main -> origin/main, working tree limpio (salvo este context.txt).
+==================================================
+
+
+==================================================
+2026-05-22 - ACCIÓN: Generar DDL del esquema traducido a MySQL/MariaDB para phpMyAdmin (Plesk)
+Contexto:
+  - El usuario subió el proyecto a Plesk (Linux, /var/www/vhosts/...) y pidió "todos los
+    querys para tirar en phpMyAdmin". Plesk Linux = MySQL/MariaDB, NO SQL Server.
+  - PROBLEMA DE FONDO: la app usa el driver `mssql` (server/src/lib/mssql.js, DB_DRIVER=mssql).
+    Crear las tablas en MySQL NO basta: el driver mssql no habla con MySQL. Falta migrar el
+    codigo a un driver MySQL (mysql2) o usar otro motor existente (json/sqlite).
+Entregado (solo SQL, sin tocar codigo aun):
+  - 8 CREATE TABLE IF NOT EXISTS en sintaxis MySQL (no destructivos), traducidos 1:1 desde
+    ensureSchema de mssql.js: users, unidades, clientes, productos, tipos_venta, ventas,
+    venta_items, oportunidades.
+  - Mapeo de tipos: NVARCHAR->VARCHAR, NVARCHAR(MAX)->TEXT, BIT->TINYINT(1); ENGINE=InnoDB
+    CHARSET=utf8mb4. UNIQUE en users.email. (oportunidades.trimestre ampliado a VARCHAR(20)).
+Decisiones / pendiente:
+  - Falta decidir con el usuario como conectar la app en Plesk: (A) migrar a driver mysql2
+    creando repos *.mysql.js + DB_DRIVER=mysql, (B) usar DB_DRIVER=json (sin BD), o
+    (C) seguir con SQL Server remoto (no recomendado).
+Estado actual: solo se entregaron los CREATE TABLE; codigo del servidor SIN cambios.
+==================================================
+
+
+==================================================
+2026-05-22 - ACCION: Soporte multi-motor (SQL Server local + MySQL/MariaDB prod) y deploy en Plesk
+Contexto:
+  - El usuario quiere: LOCAL = SQL Server, PRODUCCION (Plesk) = MySQL/MariaDB, con un solo
+    switch (DB_DRIVER). Plesk Add Database: server localhost:3306 (MariaDB 10.6.22),
+    base "Ventas_Base", user "sa", pass "Nevoli123", remote connections from any host.
+Archivos NUEVOS (motor mysql, espejo de los *.mssql.js con placeholders ? de mysql2):
+  - server/src/lib/mysql.js                  (pool + ensureSchema, 8 CREATE TABLE IF NOT EXISTS)
+  - server/src/lib/usersRepo.mysql.js
+  - server/src/lib/catalogoRepo.mysql.js
+  - server/src/lib/ventasRepo.mysql.js       (transacciones con conn.beginTransaction/commit)
+  - server/src/lib/oportunidadesRepo.mysql.js
+  - server/src/lib/catalogoStore.js          (selector por DB_DRIVER, default mssql)
+  - server/src/lib/ventasStore.js
+  - server/src/lib/oportunidadesStore.js
+Archivos MODIFICADOS:
+  - server/src/lib/usersStore.js   (+ rama 'mysql' -> usersRepo.mysql.js)
+  - server/src/controllers/{catalogo,ventas,oportunidades}Controller.js  (import de *Store.js,
+    ya NO de *.mssql.js directo -> el catalogo/ventas/oportunidades respetan DB_DRIVER)
+  - server/package.json            (+ dependencia mysql2 ^3.x; npm install OK, 10 paquetes)
+  - server/.env.example            (documenta bloque LOCAL mssql vs PRODUCCION mysql)
+  - server/src/index.js            (sirve client/dist + SPA fallback si existe la carpeta;
+    imports path/fs/url. NO afecta dev: solo se activa si client/dist existe)
+Decisiones / verificacion:
+  - mysql.js: decimalNumbers:true (DECIMAL como number, para que las validaciones de precio
+    funcionen igual que en mssql). Tipos: NVARCHAR->VARCHAR, NVARCHAR(MAX)->TEXT, BIT->TINYINT(1).
+  - node --check OK en los 9 archivos + index.js. Carga de stores con DB_DRIVER=mysql NO se
+    llego a verificar (el usuario interrumpio el test; imports resuelven, getPool es perezoso).
+  - Deploy Plesk (monorepo): App Root = httpdocs (raiz, workspaces), Startup File =
+    server/src/index.js, Document Root = httpdocs/client/dist (subchild). Pantalla previa tenia
+    Startup=index.html (MAL) y App Root=client (MAL). Hay que: npm install (raiz, workspaces),
+    npm run build (genera client/dist; dist esta gitignored, no viene del clone), y poner las
+    env vars en Plesk (DB_DRIVER=mysql, DB_*, JWT_SECRET, NODE_ENV=production; PORT lo pone
+    Passenger). Node del server: 21.7.3 (deps son JS puro, OK).
+Estado actual: codigo listo para ambos motores; falta que el usuario configure Plesk y compile.
+==================================================

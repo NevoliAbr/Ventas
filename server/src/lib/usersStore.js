@@ -1,6 +1,7 @@
 // Selector del repositorio de usuarios (la "conexión" a la base de datos).
 // Cambia el motor con la variable de entorno DB_DRIVER:
-//   'mssql'   -> Microsoft SQL Server (driver mssql)        [tu base Base_ventas]
+//   'mssql'   -> Microsoft SQL Server (driver mssql)        [local, Base_ventas]
+//   'mysql'   -> MySQL / MariaDB (driver mysql2)            [producción, Plesk]
 //   'sqlite'  -> SQLite, archivo server/auth.db (node:sqlite)
 //   'json'    -> archivo server/data/db.json (fs)
 //
@@ -14,6 +15,9 @@ let usersRepo
 if (driver === 'mssql') {
   usersRepo = (await import('./usersRepo.mssql.js')).usersRepo
   console.log('[db] Motor de usuarios: SQL Server (mssql)')
+} else if (driver === 'mysql') {
+  usersRepo = (await import('./usersRepo.mysql.js')).usersRepo
+  console.log('[db] Motor de usuarios: MySQL/MariaDB (mysql2)')
 } else if (driver === 'json') {
   usersRepo = (await import('./usersRepo.js')).usersRepo
   console.log('[db] Motor de usuarios: JSON (server/data/db.json)')
