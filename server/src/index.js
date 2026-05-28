@@ -14,12 +14,26 @@ const app = express()
 const PORT = process.env.PORT || 3001
 
 // Middleware global.
-app.use(cors())            // permite peticiones desde el frontend (Vite)
-app.use(express.json())    // parsea cuerpos JSON
+app.use(cors())
+app.use(express.json())
 
-// Comprobación de salud.
-app.get('/api/health', (req, res) => {
-  res.json({ ok: true, service: 'authapp-server' })
+// Comprobación de salud: verifica también la conexión a la DB.
+app.get('/api/health', async (_req, res) => {
+  const driver = (process.env.DB_DRIVER || 'sqlite').toLowerCase()
+  try {
+    if (driver === 'mysql') {
+      const { getPool } = await import('./lib/mysql.js')
+      const pool = await getPool()
+      await pool.query('SELECT 1')
+    } else if (driver === 'mssql') {
+      const { getPool } = await import('./lib/mssql.js')
+      const pool = await getPool()
+      await pool.request().query('SELECT 1')
+    }
+    res.json({ ok: true, service: 'ventas-server', db: driver })
+  } catch (err) {
+    res.status(503).json({ ok: false, service: 'ventas-server', db: driver, error: err.message })
+  }
 })
 
 // Rutas de autenticación.
@@ -52,6 +66,14 @@ if (fs.existsSync(clientDist)) {
   })
   console.log(`[server] Sirviendo frontend desde ${clientDist}`)
 }
+
+// Error handler global: captura cualquier excepción que escape de las rutas
+// y devuelve JSON en lugar del HTML por defecto de Express.
+// eslint-disable-next-line no-unused-vars
+app.use((err, _req, res, _next) => {
+  console.error('[server] Error no capturado:', err)
+  res.status(500).json({ error: err.message || 'Error interno del servidor.' })
+})
 
 app.listen(PORT, () => {
   console.log(`[server] API escuchando en http://localhost:${PORT}`)
