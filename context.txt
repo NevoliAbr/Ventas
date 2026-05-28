@@ -588,3 +588,17 @@ Decisiones / verificacion:
     Passenger). Node del server: 21.7.3 (deps son JS puro, OK).
 Estado actual: codigo listo para ambos motores; falta que el usuario configure Plesk y compile.
 ==================================================
+[2026-05-26] Diagnostico y fix de Error 500 en login/registro:
+  - Causa raiz 1: authController.js no tenia try-catch en ninguna funcion. Si el DB
+    lanzaba una excepcion sin capturar, Express devolvia HTML 500 y el frontend mostraba
+    "Error 500" (res.json() falla al parsear HTML, body.error queda undefined).
+    Fix: envuelto login, register, forgotPassword, resetPassword y verifyToken en try-catch
+    que devuelve { error: err.message } con status 500.
+  - Causa raiz 2: conflicto de puerto. mi-app (C:\mi-app\server, lanzado por iniciar-app.bat)
+    ocupa el :3001, por lo que el servidor de Ventas no podia arrancar (EADDRINUSE).
+    Fix: cambiado PORT=3002 en server/.env; proxy de Vite actualizado a :3002;
+    iniciar-ventas.bat actualizado con los puertos correctos.
+  - Nota: usuario de prueba "test.ventas@test.com" creado en Base_ventas.users durante
+    diagnostico. Puede eliminarse desde el panel Configuracion (superuser).
+  - Ahora: doble clic en iniciar-ventas.bat arranca backend en :3002 + Vite en :5173.
+==================================================
