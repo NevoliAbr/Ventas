@@ -3,7 +3,7 @@
 //   otro    -> SQL Server      (catalogoRepo.mssql.js)  [local, por defecto]
 // Los controladores importan el catálogo DESDE AQUÍ, así un solo DB_DRIVER
 // alterna todo. Import dinámico: solo se carga el driver elegido.
-const driver = (process.env.DB_DRIVER || 'mssql').trim().toLowerCase()
+const driver = (process.env.DB_DRIVER || 'mysql').trim().toLowerCase()
 
 const mod = driver === 'mysql'
   ? await import('./catalogoRepo.mysql.js')

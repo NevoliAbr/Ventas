@@ -19,7 +19,7 @@ app.use(express.json())
 
 // Comprobación de salud: verifica también la conexión a la DB.
 app.get('/api/health', async (_req, res) => {
-  const driver = (process.env.DB_DRIVER || 'sqlite').toLowerCase()
+  const driver = (process.env.DB_DRIVER || 'mysql').trim().toLowerCase()
   try {
     if (driver === 'mysql') {
       const { getPool } = await import('./lib/mysql.js')

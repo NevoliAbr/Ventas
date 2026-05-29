@@ -8,7 +8,7 @@
 // Todos los controladores/middleware importan usersRepo DESDE AQUÍ, así que
 // cambiar de motor es cosa de una sola variable. Se usa import dinámico para
 // no exigir dependencias del motor que no usas (p. ej. mssql).
-const driver = (process.env.DB_DRIVER || 'json').trim().toLowerCase()
+const driver = (process.env.DB_DRIVER || 'mysql').trim().toLowerCase()
 
 let usersRepo
 
