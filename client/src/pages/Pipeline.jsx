@@ -8,6 +8,30 @@ import { permissionsFor } from '../lib/permissions.js'
 import { catalogoApi, oportunidadesApi } from '../services/api.js'
 
 const money = (n) => '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+
+function exportarCSV(ops) {
+  const cabecera = ['Prospecto', 'Tipo', 'Sector', 'Responsable venta', 'Etapa', 'Unidades', 'Años',
+    'Valor contrato', 'Prob. cierre %', 'Estado', 'Ponderado', 'Trimestre',
+    'Fecha cotización', 'Próximo paso', 'Fecha próx. paso', 'Notas']
+  const esc = (v) => {
+    const s = String(v ?? '')
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  const filas = ops.map((o) => [
+    o.prospecto, o.tipo || '', o.sector || '', o.responsable || '',
+    o.etapa || '', o.unidades, o.anios,
+    Number(o.valor_total || 0), Math.round(Number(o.prob_cierre) * 100),
+    PROB_LABELS[Number(o.prob_cierre)] || '',
+    Number(o.valor_ponderado || 0), o.trimestre || '',
+    o.fecha_cotizacion || '', o.proximo_paso || '', o.fecha_sig_paso || '', o.notas || '',
+  ].map(esc).join(','))
+  const csv = [cabecera.join(','), ...filas].join('\r\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = `pipeline_${new Date().toISOString().slice(0, 10)}.csv`
+  a.click(); URL.revokeObjectURL(url)
+}
 const ANIOS = [1, 2, 3, 4, 5, 6]
 const TRIMESTRES = ['Q1', 'Q2', 'Q3', 'Q4']
 const PROBS = [0, 0.25, 0.5, 0.75, 0.9, 1]
@@ -223,7 +247,14 @@ export default function Pipeline() {
         )}
 
         <div className="slds-box slds-theme_default">
-          <h2 className="slds-text-heading_small slds-m-bottom_small">Oportunidades</h2>
+          <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
+            <h2 className="slds-text-heading_small">Oportunidades</h2>
+            {ops.length > 0 && (
+              <button className="slds-button slds-button_neutral" onClick={() => exportarCSV(ops)}>
+                ⬇ Exportar CSV
+              </button>
+            )}
+          </div>
           {cargando ? <p className="slds-text-color_weak">Cargando…</p> : ops.length === 0 ? (
             <p className="slds-text-color_weak">Aún no hay oportunidades.</p>
           ) : (
