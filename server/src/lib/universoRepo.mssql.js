@@ -56,4 +56,13 @@ export const universoRepo = {
     const r = await pool.request().input('id', sql.NVarChar, id).query('DELETE FROM universo WHERE id=@id')
     return r.rowsAffected[0] > 0
   },
+  async seedIfEmpty(data) {
+    const pool = await getPool()
+    const { recordset } = await pool.request().query('SELECT COUNT(*) AS n FROM universo')
+    if (Number(recordset[0].n) > 0) return
+    for (const o of data) {
+      await this.create({ status_contacto: 'Sin contacto', etapa_pipeline: 'Universo', ...o })
+    }
+    console.log(`[db] Universo: ${data.length} prospectos iniciales insertados.`)
+  },
 }
