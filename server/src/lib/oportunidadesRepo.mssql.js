@@ -7,7 +7,7 @@ const first = (r) => r.recordset[0] ?? null
 const CAMPOS = [
   'prospecto', 'sector', 'producto_id', 'tipo_venta_id', 'descripcion', 'unidades',
   'anios', 'precio_unitario', 'ingreso_mensual', 'ingreso_anual', 'valor_total',
-  'prob_cierre', 'valor_ponderado', 'etapa', 'trimestre', 'mes_estimado', 'notas',
+  'prob_cierre', 'valor_ponderado', 'etapa', 'trimestre', 'mes_estimado', 'notas', 'responsable',
 ]
 
 function bind(reqst, o) {
@@ -29,6 +29,7 @@ function bind(reqst, o) {
     .input('trimestre', sql.NVarChar, o.trimestre ?? null)
     .input('mes_estimado', sql.NVarChar, o.mes_estimado ?? null)
     .input('notas', sql.NVarChar, o.notas ?? null)
+    .input('responsable', sql.NVarChar, o.responsable ?? null)
 }
 
 export const oportunidadesRepo = {

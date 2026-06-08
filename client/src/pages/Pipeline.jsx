@@ -11,7 +11,7 @@ const money = (n) => '$' + Number(n || 0).toLocaleString('es-MX', { minimumFract
 const ANIOS = [1, 2, 3, 4, 5, 6]
 const TRIMESTRES = ['Q1', 'Q2', 'Q3', 'Q4']
 const PROBS = [0.25, 0.4, 0.55, 0.7, 0.9]
-const VACIO = { prospecto: '', sector: '', productoId: '', unidades: '', anios: '1', precio: '', prob: '0.25', etapa: 'Prospecting', trimestre: 'Q2', mes: '', notas: '' }
+const VACIO = { prospecto: '', sector: '', productoId: '', unidades: '', anios: '1', precio: '', prob: '0.25', etapa: 'Prospecting', trimestre: 'Q2', mes: '', notas: '', responsable: '' }
 const rangoPara = (rangos, c) => rangos.find((r) => c >= r.unidades_min && (r.unidades_max == null || c <= r.unidades_max))
 
 const etapaColor = (e) => ({ Prospecting: 'role-user', Discovery: 'role-viewer', Proposal: 'role-admin', Negotiation: 'role-superuser', Won: 'role-user', Lost: 'role-viewer' }[e] || 'role-viewer')
@@ -71,7 +71,8 @@ export default function Pipeline() {
     const payload = {
       prospecto: form.prospecto, sector: form.sector, producto_id: form.productoId,
       unidades: Number(form.unidades), anios: Number(form.anios), precio_unitario: Number(form.precio),
-      prob_cierre: Number(form.prob), etapa: form.etapa, trimestre: form.trimestre, mes_estimado: form.mes, notas: form.notas,
+      prob_cierre: Number(form.prob), etapa: form.etapa, trimestre: form.trimestre, mes_estimado: form.mes,
+      notas: form.notas, responsable: form.responsable,
     }
     try {
       if (editId) {
@@ -88,7 +89,7 @@ export default function Pipeline() {
     setEditId(o.id)
     setForm({ prospecto: o.prospecto, sector: o.sector || '', productoId: o.producto_id || '', unidades: String(o.unidades),
       anios: String(o.anios), precio: String(o.precio_unitario), prob: String(o.prob_cierre), etapa: o.etapa || 'Prospecting',
-      trimestre: o.trimestre || 'Q2', mes: o.mes_estimado || '', notas: o.notas || '' })
+      trimestre: o.trimestre || 'Q2', mes: o.mes_estimado || '', notas: o.notas || '', responsable: o.responsable || '' })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
   async function eliminar(o) {
@@ -172,6 +173,8 @@ export default function Pipeline() {
                       {TRIMESTRES.map((q) => <option key={q} value={q}>{q}</option>)}</select></div></div>
                   <div className="slds-col slds-grow-none" style={{ maxWidth: 120 }}><label className="slds-form-element__label">Mes estimado</label>
                     <input className="slds-input" value={form.mes} onChange={(e) => setForm({ ...form, mes: e.target.value })} placeholder="Mayo" /></div>
+                  <div className="slds-col slds-grow-none" style={{ maxWidth: 180 }}><label className="slds-form-element__label">Responsable venta</label>
+                    <input className="slds-input" value={form.responsable} onChange={(e) => setForm({ ...form, responsable: e.target.value })} placeholder="Nombre…" /></div>
                   <div className="slds-col slds-grow-none"><button className="slds-button slds-button_brand" type="submit" disabled={!rangoSel}>{editId ? 'Guardar' : 'Agregar'}</button></div>
                 </div>
                 {form.unidades && !rangoSel && <p className="slds-text-color_error slds-text-body_small slds-m-top_x-small">⚠️ No hay rango para {form.unidades} unidades.</p>}
@@ -192,13 +195,14 @@ export default function Pipeline() {
           ) : (
             <table className="slds-table slds-table_bordered slds-table_cell-buffer">
               <thead><tr className="slds-line-height_reset">
-                <th>Prospecto</th><th>Sector</th><th>Etapa</th><th>Unid.</th><th>Años</th><th>Valor contrato</th><th>Prob.</th><th>Ponderado</th><th>Trim.</th>{canEdit && <th>Acciones</th>}
+                <th>Prospecto</th><th>Sector</th><th>Responsable</th><th>Etapa</th><th>Unid.</th><th>Años</th><th>Valor contrato</th><th>Prob.</th><th>Ponderado</th><th>Trim.</th>{canEdit && <th>Acciones</th>}
               </tr></thead>
               <tbody>
                 {ops.map((o) => (
                   <tr key={o.id}>
                     <td>{o.prospecto}</td>
                     <td>{o.sector || '—'}</td>
+                    <td>{o.responsable || '—'}</td>
                     <td><span className={'role-badge ' + etapaColor(o.etapa)}>{o.etapa}</span></td>
                     <td>{o.unidades}</td>
                     <td>{o.anios}</td>

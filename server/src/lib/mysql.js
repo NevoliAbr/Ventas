@@ -130,9 +130,12 @@ async function ensureSchema(pool) {
       trimestre       VARCHAR(20)   NULL,
       mes_estimado    VARCHAR(20)   NULL,
       notas           TEXT          NULL,
+      responsable     VARCHAR(200)  NULL,
       createdBy       VARCHAR(64)   NULL,
       createdAt       VARCHAR(40)   NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   ]
   for (const ddl of tablas) await pool.query(ddl)
+  // Migración: agregar columna responsable si la tabla ya existía sin ella.
+  await pool.query(`ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS responsable VARCHAR(200) NULL`)
 }

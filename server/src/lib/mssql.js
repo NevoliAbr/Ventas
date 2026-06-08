@@ -173,9 +173,11 @@ async function ensureSchema(pool) {
       trimestre       NVARCHAR(10)  NULL,
       mes_estimado    NVARCHAR(20)  NULL,
       notas           NVARCHAR(MAX) NULL,
+      responsable     NVARCHAR(200) NULL,
       createdBy       NVARCHAR(64)  NULL,
       createdAt       NVARCHAR(40)  NOT NULL
     )`)
+  await pool.request().query(`IF COL_LENGTH('oportunidades','responsable') IS NULL ALTER TABLE oportunidades ADD responsable NVARCHAR(200) NULL`)
 }
 
 export { sql }

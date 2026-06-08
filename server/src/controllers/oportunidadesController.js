@@ -56,6 +56,7 @@ async function calcular(body) {
       trimestre: body.trimestre?.trim() || null,
       mes_estimado: body.mes_estimado?.trim() || null,
       notas: body.notas?.trim() || null,
+      responsable: body.responsable?.trim() || null,
     },
   }
 }

@@ -8,7 +8,7 @@ const first = (rows) => rows[0] ?? null
 const CAMPOS = [
   'prospecto', 'sector', 'producto_id', 'tipo_venta_id', 'descripcion', 'unidades',
   'anios', 'precio_unitario', 'ingreso_mensual', 'ingreso_anual', 'valor_total',
-  'prob_cierre', 'valor_ponderado', 'etapa', 'trimestre', 'mes_estimado', 'notas',
+  'prob_cierre', 'valor_ponderado', 'etapa', 'trimestre', 'mes_estimado', 'notas', 'responsable',
 ]
 
 // Devuelve los valores de CAMPOS en el mismo orden (con sus defaults/null).
@@ -17,6 +17,7 @@ function valores(o) {
     o.prospecto, o.sector ?? null, o.producto_id ?? null, o.tipo_venta_id ?? null, o.descripcion ?? null,
     o.unidades, o.anios, o.precio_unitario, o.ingreso_mensual ?? null, o.ingreso_anual ?? null, o.valor_total ?? null,
     o.prob_cierre ?? 0, o.valor_ponderado ?? null, o.etapa ?? null, o.trimestre ?? null, o.mes_estimado ?? null, o.notas ?? null,
+    o.responsable ?? null,
   ]
 }
 
