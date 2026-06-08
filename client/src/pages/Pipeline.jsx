@@ -207,7 +207,9 @@ export default function Pipeline() {
                     <input className="slds-input" value={form.proximo_paso} onChange={(e) => setForm({ ...form, proximo_paso: e.target.value })} placeholder="Enviar propuesta…" /></div>
                   <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}><label className="slds-form-element__label">Fecha próximo paso</label>
                     <input className="slds-input" type="date" value={form.fecha_sig_paso} onChange={(e) => setForm({ ...form, fecha_sig_paso: e.target.value })} /></div>
-                  <div className="slds-col slds-grow-none"><button className="slds-button slds-button_brand" type="submit" disabled={!rangoSel}>{editId ? 'Guardar' : 'Agregar'}</button></div>
+                  <div className="slds-col slds-size_1-of-1 slds-m-top_x-small"><label className="slds-form-element__label">Notas / Observaciones</label>
+                    <input className="slds-input" value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} placeholder="Observaciones, evolución…" /></div>
+                  <div className="slds-col slds-grow-none slds-m-top_x-small"><button className="slds-button slds-button_brand" type="submit" disabled={!rangoSel}>{editId ? 'Guardar' : 'Agregar'}</button></div>
                 </div>
                 {form.unidades && !rangoSel && <p className="slds-text-color_error slds-text-body_small slds-m-top_x-small">⚠️ No hay rango para {form.unidades} unidades.</p>}
                 {prev && rangoSel && (
@@ -222,9 +224,10 @@ export default function Pipeline() {
 
         <div className="slds-box slds-theme_default">
           <h2 className="slds-text-heading_small slds-m-bottom_small">Oportunidades</h2>
-          {ops.length === 0 ? (
+          {cargando ? <p className="slds-text-color_weak">Cargando…</p> : ops.length === 0 ? (
             <p className="slds-text-color_weak">Aún no hay oportunidades.</p>
           ) : (
+            <div style={{ overflowX: 'auto' }}>
             <table className="slds-table slds-table_bordered slds-table_cell-buffer">
               <thead><tr className="slds-line-height_reset">
                 <th>Empresa</th><th>Tipo</th><th>Sector</th><th>Responsable</th><th>Contacto</th>
@@ -261,6 +264,7 @@ export default function Pipeline() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>
