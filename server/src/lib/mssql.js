@@ -172,12 +172,66 @@ async function ensureSchema(pool) {
       etapa           NVARCHAR(30)  NULL,
       trimestre       NVARCHAR(10)  NULL,
       mes_estimado    NVARCHAR(20)  NULL,
-      notas           NVARCHAR(MAX) NULL,
-      responsable     NVARCHAR(200) NULL,
-      createdBy       NVARCHAR(64)  NULL,
-      createdAt       NVARCHAR(40)  NOT NULL
+      notas             NVARCHAR(MAX) NULL,
+      responsable       NVARCHAR(200) NULL,
+      tipo              NVARCHAR(30)  NULL,
+      contacto_nombre   NVARCHAR(200) NULL,
+      contacto_telefono NVARCHAR(50)  NULL,
+      fecha_cotizacion  NVARCHAR(40)  NULL,
+      proximo_paso      NVARCHAR(300) NULL,
+      fecha_sig_paso    NVARCHAR(40)  NULL,
+      createdBy         NVARCHAR(64)  NULL,
+      createdAt         NVARCHAR(40)  NOT NULL
     )`)
   await pool.request().query(`IF COL_LENGTH('oportunidades','responsable') IS NULL ALTER TABLE oportunidades ADD responsable NVARCHAR(200) NULL`)
+  await pool.request().query(`IF COL_LENGTH('oportunidades','tipo') IS NULL ALTER TABLE oportunidades ADD tipo NVARCHAR(30) NULL`)
+  await pool.request().query(`IF COL_LENGTH('oportunidades','contacto_nombre') IS NULL ALTER TABLE oportunidades ADD contacto_nombre NVARCHAR(200) NULL`)
+  await pool.request().query(`IF COL_LENGTH('oportunidades','contacto_telefono') IS NULL ALTER TABLE oportunidades ADD contacto_telefono NVARCHAR(50) NULL`)
+  await pool.request().query(`IF COL_LENGTH('oportunidades','fecha_cotizacion') IS NULL ALTER TABLE oportunidades ADD fecha_cotizacion NVARCHAR(40) NULL`)
+  await pool.request().query(`IF COL_LENGTH('oportunidades','proximo_paso') IS NULL ALTER TABLE oportunidades ADD proximo_paso NVARCHAR(300) NULL`)
+  await pool.request().query(`IF COL_LENGTH('oportunidades','fecha_sig_paso') IS NULL ALTER TABLE oportunidades ADD fecha_sig_paso NVARCHAR(40) NULL`)
+
+  // Universo de prospectos
+  await pool.request().query(`
+    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='universo' AND xtype='U')
+    CREATE TABLE universo (
+      id               NVARCHAR(64)  NOT NULL PRIMARY KEY,
+      empresa          NVARCHAR(200) NOT NULL,
+      rubro            NVARCHAR(200) NULL,
+      segmento         NVARCHAR(20)  NULL,
+      contacto_nombre  NVARCHAR(200) NULL,
+      email            NVARCHAR(320) NULL,
+      telefono         NVARCHAR(50)  NULL,
+      sitio_web        NVARCHAR(300) NULL,
+      linkedin         NVARCHAR(300) NULL,
+      tipo             NVARCHAR(30)  NULL,
+      responsable      NVARCHAR(200) NULL,
+      fecha_contacto   NVARCHAR(40)  NULL,
+      status_contacto  NVARCHAR(30)  NOT NULL CONSTRAINT DF_uni_status DEFAULT 'Sin contacto',
+      etapa_pipeline   NVARCHAR(30)  NOT NULL CONSTRAINT DF_uni_etapa  DEFAULT 'Universo',
+      createdAt        NVARCHAR(40)  NOT NULL
+    )`)
+
+  // Prospectos activos (reuniones)
+  await pool.request().query(`
+    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='prospectos_activos' AND xtype='U')
+    CREATE TABLE prospectos_activos (
+      id                 NVARCHAR(64)  NOT NULL PRIMARY KEY,
+      empresa            NVARCHAR(200) NOT NULL,
+      tipo               NVARCHAR(30)  NULL,
+      contacto_nombre    NVARCHAR(200) NULL,
+      telefono           NVARCHAR(50)  NULL,
+      responsable        NVARCHAR(200) NULL,
+      fecha_1ra_reunion  NVARCHAR(40)  NULL,
+      status_1ra_reunion NVARCHAR(30)  NULL,
+      obs_1ra_reunion    NVARCHAR(MAX) NULL,
+      fecha_2da_reunion  NVARCHAR(40)  NULL,
+      status_2da_reunion NVARCHAR(30)  NULL,
+      obs_2da_reunion    NVARCHAR(MAX) NULL,
+      pide_cotizacion    BIT           NOT NULL CONSTRAINT DF_pr_pide  DEFAULT 0,
+      pasa_forecast      BIT           NOT NULL CONSTRAINT DF_pr_pasa  DEFAULT 0,
+      createdAt          NVARCHAR(40)  NOT NULL
+    )`)
 }
 
 export { sql }

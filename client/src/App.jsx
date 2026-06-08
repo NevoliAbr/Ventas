@@ -9,6 +9,8 @@ import Configuracion from './pages/Configuracion.jsx'
 import ConfiguracionVentas from './pages/ConfiguracionVentas.jsx'
 import Cotizaciones from './pages/Cotizaciones.jsx'
 import Pipeline from './pages/Pipeline.jsx'
+import Universo from './pages/Universo.jsx'
+import Prospectos from './pages/Prospectos.jsx'
 import PrivateRoute from './components/PrivateRoute.jsx'
 
 export default function App() {
@@ -65,6 +67,22 @@ export default function App() {
         element={
           <PrivateRoute>
             <Pipeline />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/universo"
+        element={
+          <PrivateRoute>
+            <Universo />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/prospectos"
+        element={
+          <PrivateRoute>
+            <Prospectos />
           </PrivateRoute>
         }
       />

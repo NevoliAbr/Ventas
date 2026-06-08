@@ -9,6 +9,8 @@ import usersRouter from './routes/users.js'
 import catalogoRouter from './routes/catalogo.js'
 import ventasRouter from './routes/ventas.js'
 import oportunidadesRouter from './routes/oportunidades.js'
+import universoRouter from './routes/universo.js'
+import prospectoRouter from './routes/prospectos.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -50,6 +52,12 @@ app.use('/api/ventas', ventasRouter)
 
 // Rutas de Pipeline / Forecast.
 app.use('/api/oportunidades', oportunidadesRouter)
+
+// Rutas de Universo de prospectos.
+app.use('/api/universo', universoRouter)
+
+// Rutas de Prospectos activos (reuniones).
+app.use('/api/prospectos', prospectoRouter)
 
 // ---- Frontend de React ya compilado (producción / Plesk) ----
 // El cliente usa rutas relativas /api, así que servir el build desde el MISMO

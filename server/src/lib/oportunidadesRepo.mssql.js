@@ -5,15 +5,17 @@ import { randomUUID } from 'node:crypto'
 const first = (r) => r.recordset[0] ?? null
 
 const CAMPOS = [
-  'prospecto', 'sector', 'producto_id', 'tipo_venta_id', 'descripcion', 'unidades',
+  'prospecto', 'sector', 'tipo', 'producto_id', 'tipo_venta_id', 'descripcion', 'unidades',
   'anios', 'precio_unitario', 'ingreso_mensual', 'ingreso_anual', 'valor_total',
-  'prob_cierre', 'valor_ponderado', 'etapa', 'trimestre', 'mes_estimado', 'notas', 'responsable',
+  'prob_cierre', 'valor_ponderado', 'etapa', 'trimestre', 'mes_estimado', 'notas',
+  'responsable', 'contacto_nombre', 'contacto_telefono', 'fecha_cotizacion', 'proximo_paso', 'fecha_sig_paso',
 ]
 
 function bind(reqst, o) {
   return reqst
     .input('prospecto', sql.NVarChar, o.prospecto)
     .input('sector', sql.NVarChar, o.sector ?? null)
+    .input('tipo', sql.NVarChar, o.tipo ?? null)
     .input('producto_id', sql.NVarChar, o.producto_id ?? null)
     .input('tipo_venta_id', sql.NVarChar, o.tipo_venta_id ?? null)
     .input('descripcion', sql.NVarChar, o.descripcion ?? null)
@@ -30,6 +32,11 @@ function bind(reqst, o) {
     .input('mes_estimado', sql.NVarChar, o.mes_estimado ?? null)
     .input('notas', sql.NVarChar, o.notas ?? null)
     .input('responsable', sql.NVarChar, o.responsable ?? null)
+    .input('contacto_nombre', sql.NVarChar, o.contacto_nombre ?? null)
+    .input('contacto_telefono', sql.NVarChar, o.contacto_telefono ?? null)
+    .input('fecha_cotizacion', sql.NVarChar, o.fecha_cotizacion ?? null)
+    .input('proximo_paso', sql.NVarChar, o.proximo_paso ?? null)
+    .input('fecha_sig_paso', sql.NVarChar, o.fecha_sig_paso ?? null)
 }
 
 export const oportunidadesRepo = {

@@ -112,30 +112,78 @@ async function ensureSchema(pool) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
     `CREATE TABLE IF NOT EXISTS oportunidades (
-      id              VARCHAR(64)   NOT NULL PRIMARY KEY,
-      prospecto       VARCHAR(200)  NOT NULL,
-      sector          VARCHAR(100)  NULL,
-      producto_id     VARCHAR(64)   NULL,
-      tipo_venta_id   VARCHAR(64)   NULL,
-      descripcion     VARCHAR(300)  NULL,
-      unidades        INT           NOT NULL,
-      anios           INT           NOT NULL DEFAULT 1,
-      precio_unitario DECIMAL(18,2) NOT NULL,
-      ingreso_mensual DECIMAL(18,2) NULL,
-      ingreso_anual   DECIMAL(18,2) NULL,
-      valor_total     DECIMAL(18,2) NULL,
-      prob_cierre     DECIMAL(5,2)  NOT NULL DEFAULT 0,
-      valor_ponderado DECIMAL(18,2) NULL,
-      etapa           VARCHAR(30)   NULL,
-      trimestre       VARCHAR(20)   NULL,
-      mes_estimado    VARCHAR(20)   NULL,
-      notas           TEXT          NULL,
-      responsable     VARCHAR(200)  NULL,
-      createdBy       VARCHAR(64)   NULL,
-      createdAt       VARCHAR(40)   NOT NULL
+      id                VARCHAR(64)   NOT NULL PRIMARY KEY,
+      prospecto         VARCHAR(200)  NOT NULL,
+      sector            VARCHAR(100)  NULL,
+      tipo              VARCHAR(30)   NULL,
+      producto_id       VARCHAR(64)   NULL,
+      tipo_venta_id     VARCHAR(64)   NULL,
+      descripcion       VARCHAR(300)  NULL,
+      unidades          INT           NOT NULL,
+      anios             INT           NOT NULL DEFAULT 1,
+      precio_unitario   DECIMAL(18,2) NOT NULL,
+      ingreso_mensual   DECIMAL(18,2) NULL,
+      ingreso_anual     DECIMAL(18,2) NULL,
+      valor_total       DECIMAL(18,2) NULL,
+      prob_cierre       DECIMAL(5,2)  NOT NULL DEFAULT 0,
+      valor_ponderado   DECIMAL(18,2) NULL,
+      etapa             VARCHAR(30)   NULL,
+      trimestre         VARCHAR(20)   NULL,
+      mes_estimado      VARCHAR(20)   NULL,
+      notas             TEXT          NULL,
+      responsable       VARCHAR(200)  NULL,
+      contacto_nombre   VARCHAR(200)  NULL,
+      contacto_telefono VARCHAR(50)   NULL,
+      fecha_cotizacion  VARCHAR(40)   NULL,
+      proximo_paso      VARCHAR(300)  NULL,
+      fecha_sig_paso    VARCHAR(40)   NULL,
+      createdBy         VARCHAR(64)   NULL,
+      createdAt         VARCHAR(40)   NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+    `CREATE TABLE IF NOT EXISTS universo (
+      id               VARCHAR(64)  NOT NULL PRIMARY KEY,
+      empresa          VARCHAR(200) NOT NULL,
+      rubro            VARCHAR(200) NULL,
+      segmento         VARCHAR(20)  NULL,
+      contacto_nombre  VARCHAR(200) NULL,
+      email            VARCHAR(320) NULL,
+      telefono         VARCHAR(50)  NULL,
+      sitio_web        VARCHAR(300) NULL,
+      linkedin         VARCHAR(300) NULL,
+      tipo             VARCHAR(30)  NULL,
+      responsable      VARCHAR(200) NULL,
+      fecha_contacto   VARCHAR(40)  NULL,
+      status_contacto  VARCHAR(30)  NOT NULL DEFAULT 'Sin contacto',
+      etapa_pipeline   VARCHAR(30)  NOT NULL DEFAULT 'Universo',
+      createdAt        VARCHAR(40)  NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+    `CREATE TABLE IF NOT EXISTS prospectos_activos (
+      id                 VARCHAR(64)  NOT NULL PRIMARY KEY,
+      empresa            VARCHAR(200) NOT NULL,
+      tipo               VARCHAR(30)  NULL,
+      contacto_nombre    VARCHAR(200) NULL,
+      telefono           VARCHAR(50)  NULL,
+      responsable        VARCHAR(200) NULL,
+      fecha_1ra_reunion  VARCHAR(40)  NULL,
+      status_1ra_reunion VARCHAR(30)  NULL,
+      obs_1ra_reunion    TEXT         NULL,
+      fecha_2da_reunion  VARCHAR(40)  NULL,
+      status_2da_reunion VARCHAR(30)  NULL,
+      obs_2da_reunion    TEXT         NULL,
+      pide_cotizacion    TINYINT(1)   NOT NULL DEFAULT 0,
+      pasa_forecast      TINYINT(1)   NOT NULL DEFAULT 0,
+      createdAt          VARCHAR(40)  NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   ]
   for (const ddl of tablas) await pool.query(ddl)
-  // Migración: agregar columna responsable si la tabla ya existía sin ella.
+  // Migraciones: columnas nuevas en tablas ya existentes.
   await pool.query(`ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS responsable VARCHAR(200) NULL`)
+  await pool.query(`ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS tipo VARCHAR(30) NULL`)
+  await pool.query(`ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS contacto_nombre VARCHAR(200) NULL`)
+  await pool.query(`ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS contacto_telefono VARCHAR(50) NULL`)
+  await pool.query(`ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS fecha_cotizacion VARCHAR(40) NULL`)
+  await pool.query(`ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS proximo_paso VARCHAR(300) NULL`)
+  await pool.query(`ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS fecha_sig_paso VARCHAR(40) NULL`)
 }

@@ -30,6 +30,22 @@ export default function Inicio() {
       badge: perms.facultades.ventasVer ? null : 'Sin acceso',
     },
     {
+      icono: '🌐',
+      tint: '#f0f4ff',
+      titulo: 'Universo',
+      desc: 'Lista de prospectos y primer contacto',
+      to: perms.facultades.ventasVer ? '/universo' : null,
+      badge: perms.facultades.ventasVer ? null : 'Sin acceso',
+    },
+    {
+      icono: '🤝',
+      tint: '#f0fff4',
+      titulo: 'Prospectos',
+      desc: 'Seguimiento de reuniones activas',
+      to: perms.facultades.ventasVer ? '/prospectos' : null,
+      badge: perms.facultades.ventasVer ? null : 'Sin acceso',
+    },
+    {
       icono: '📈',
       tint: '#fff6e6',
       titulo: 'Pipeline / Forecast',

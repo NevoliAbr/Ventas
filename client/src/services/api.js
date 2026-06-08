@@ -122,3 +122,19 @@ export const oportunidadesApi = {
   update: (id, d) => authPatch(`/oportunidades/${id}`, d),
   remove: (id) => authDelete(`/oportunidades/${id}`),
 }
+
+// --- Universo de prospectos ---
+export const universoApi = {
+  list: () => fetch(`${BASE}/universo`, { headers: authHeaders() }).then(handle),
+  create: (d) => authPost('/universo', d),
+  update: (id, d) => authPatch(`/universo/${id}`, d),
+  remove: (id) => authDelete(`/universo/${id}`),
+}
+
+// --- Prospectos activos (reuniones) ---
+export const prospectoApi = {
+  list: () => fetch(`${BASE}/prospectos`, { headers: authHeaders() }).then(handle),
+  create: (d) => authPost('/prospectos', d),
+  update: (id, d) => authPatch(`/prospectos/${id}`, d),
+  remove: (id) => authDelete(`/prospectos/${id}`),
+}

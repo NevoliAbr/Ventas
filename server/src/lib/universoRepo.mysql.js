@@ -1,0 +1,56 @@
+// Repositorio de universo de prospectos sobre MySQL / MariaDB.
+import { getPool } from './mysql.js'
+import { randomUUID } from 'node:crypto'
+
+const CAMPOS = [
+  'empresa', 'rubro', 'segmento', 'contacto_nombre', 'email', 'telefono',
+  'sitio_web', 'linkedin', 'tipo', 'responsable', 'fecha_contacto',
+  'status_contacto', 'etapa_pipeline',
+]
+
+function valores(o) {
+  return [
+    o.empresa,
+    o.rubro ?? null, o.segmento ?? null, o.contacto_nombre ?? null,
+    o.email ?? null, o.telefono ?? null, o.sitio_web ?? null, o.linkedin ?? null,
+    o.tipo ?? null, o.responsable ?? null, o.fecha_contacto ?? null,
+    o.status_contacto ?? 'Sin contacto', o.etapa_pipeline ?? 'Universo',
+  ]
+}
+
+export const universoRepo = {
+  async all() {
+    const pool = await getPool()
+    const [rows] = await pool.query('SELECT * FROM universo ORDER BY createdAt DESC')
+    return rows
+  },
+  async find(id) {
+    const pool = await getPool()
+    const [rows] = await pool.query('SELECT * FROM universo WHERE id=?', [id])
+    return rows[0] ?? null
+  },
+  async create(o) {
+    const pool = await getPool()
+    const row = { ...o, id: randomUUID(), createdAt: new Date().toISOString() }
+    const cols = ['id', ...CAMPOS, 'createdAt']
+    const vals = [row.id, ...valores(row), row.createdAt]
+    await pool.query(
+      `INSERT INTO universo (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`,
+      vals,
+    )
+    return row
+  },
+  async update(id, o) {
+    const pool = await getPool()
+    await pool.query(
+      `UPDATE universo SET ${CAMPOS.map((c) => `${c}=?`).join(', ')} WHERE id=?`,
+      [...valores(o), id],
+    )
+    return this.find(id)
+  },
+  async remove(id) {
+    const pool = await getPool()
+    const [r] = await pool.query('DELETE FROM universo WHERE id=?', [id])
+    return r.affectedRows > 0
+  },
+}

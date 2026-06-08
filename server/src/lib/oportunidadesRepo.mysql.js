@@ -6,18 +6,19 @@ import { randomUUID } from 'node:crypto'
 const first = (rows) => rows[0] ?? null
 
 const CAMPOS = [
-  'prospecto', 'sector', 'producto_id', 'tipo_venta_id', 'descripcion', 'unidades',
+  'prospecto', 'sector', 'tipo', 'producto_id', 'tipo_venta_id', 'descripcion', 'unidades',
   'anios', 'precio_unitario', 'ingreso_mensual', 'ingreso_anual', 'valor_total',
-  'prob_cierre', 'valor_ponderado', 'etapa', 'trimestre', 'mes_estimado', 'notas', 'responsable',
+  'prob_cierre', 'valor_ponderado', 'etapa', 'trimestre', 'mes_estimado', 'notas',
+  'responsable', 'contacto_nombre', 'contacto_telefono', 'fecha_cotizacion', 'proximo_paso', 'fecha_sig_paso',
 ]
 
-// Devuelve los valores de CAMPOS en el mismo orden (con sus defaults/null).
 function valores(o) {
   return [
-    o.prospecto, o.sector ?? null, o.producto_id ?? null, o.tipo_venta_id ?? null, o.descripcion ?? null,
+    o.prospecto, o.sector ?? null, o.tipo ?? null, o.producto_id ?? null, o.tipo_venta_id ?? null, o.descripcion ?? null,
     o.unidades, o.anios, o.precio_unitario, o.ingreso_mensual ?? null, o.ingreso_anual ?? null, o.valor_total ?? null,
     o.prob_cierre ?? 0, o.valor_ponderado ?? null, o.etapa ?? null, o.trimestre ?? null, o.mes_estimado ?? null, o.notas ?? null,
-    o.responsable ?? null,
+    o.responsable ?? null, o.contacto_nombre ?? null, o.contacto_telefono ?? null,
+    o.fecha_cotizacion ?? null, o.proximo_paso ?? null, o.fecha_sig_paso ?? null,
   ]
 }
 

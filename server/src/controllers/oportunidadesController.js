@@ -5,6 +5,15 @@ import { productos, tiposVenta } from '../lib/catalogoStore.js'
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100
 const ETAPAS = ['Prospecting', 'Discovery', 'Proposal', 'Negotiation', 'Won', 'Lost']
+const TIPOS = ['Empresa', 'Municipio']
+const PROB_LABELS = {
+  0: 'Sin posibilidad · Se descarta',
+  0.25: 'Interesado · Hay presupuesto disponible',
+  0.5: 'En área de aprobación interna',
+  0.75: 'Aprobado · En espera de finanzas',
+  0.9: 'En espera de contrato firmado',
+  1: 'CERRADO — Contrato firmado',
+}
 const rangoPara = (rangos, c) => rangos.find((r) => c >= r.unidades_min && (r.unidades_max == null || c <= r.unidades_max))
 
 // Valida y calcula los importes a partir del catálogo.
@@ -57,12 +66,23 @@ async function calcular(body) {
       mes_estimado: body.mes_estimado?.trim() || null,
       notas: body.notas?.trim() || null,
       responsable: body.responsable?.trim() || null,
+      tipo: TIPOS.includes(body.tipo) ? body.tipo : null,
+      contacto_nombre: body.contacto_nombre?.trim() || null,
+      contacto_telefono: body.contacto_telefono?.trim() || null,
+      fecha_cotizacion: body.fecha_cotizacion?.trim() || null,
+      proximo_paso: body.proximo_paso?.trim() || null,
+      fecha_sig_paso: body.fecha_sig_paso?.trim() || null,
     },
   }
 }
 
 export async function listOportunidades(req, res) {
-  res.json({ oportunidades: await oportunidadesRepo.all(), etapas: ETAPAS })
+  try {
+    res.json({ oportunidades: await oportunidadesRepo.all(), etapas: ETAPAS, tipos: TIPOS, probLabels: PROB_LABELS })
+  } catch (err) {
+    console.error('[oportunidades] list error:', err)
+    res.status(500).json({ error: err.message })
+  }
 }
 export async function createOportunidad(req, res) {
   const { error, datos } = await calcular(req.body)
