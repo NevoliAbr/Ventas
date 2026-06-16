@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /d/)",
+      "Read(//d//**)",
+      "PowerShell($pids = \\(Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue\\).OwningProcess; if \\($pids\\) { $pids | ForEach-Object { Write-Host \"Matando PID $_\"; Stop-Process -Id $_ -Force } } else { Write-Host \"Puerto 3001 libre\" })",
+      "PowerShell(taskkill /F /IM node.exe 2>&1)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Process node -ErrorAction SilentlyContinue)",
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:3001/api/auth/login\" -Method POST -ContentType \"application/json\" -Body '{\"email\":\"test@test.com\",\"password\":\"test\"}' -ErrorAction SilentlyContinue)"
+    ]
+  }
+}
