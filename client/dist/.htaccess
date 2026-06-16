@@ -1,5 +1,10 @@
 Options -MultiViews
 RewriteEngine On
+
+# Las rutas /api/ pasan directo al backend (Node.js), no se reescriben
+RewriteRule ^api/ - [L]
+
+# SPA fallback: todo lo demás que no sea un archivo real → index.html
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.html [QSA,L]
