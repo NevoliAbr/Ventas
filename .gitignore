@@ -10,7 +10,6 @@ pnpm-debug.log*
 node_modules
 
 # Builds
-dist
 dist-ssr
 *.local
 
