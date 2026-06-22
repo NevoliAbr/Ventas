@@ -1,64 +1,100 @@
 ===============================================================
   GUÍA DE DESPLIEGUE A PRODUCCIÓN — Business Development
+  Servidor: Plesk + Node.js + MySQL/MariaDB
 ===============================================================
 
-ANTES DE SUBIR A PRODUCCIÓN
------------------------------
-1. Ejecutar el script de deploy (hace build + commit + push):
 
-     Windows:   deploy.bat
-     Git Bash:  bash deploy.sh
-
-   O manualmente:
-     npm run build
-     git add client/dist
-     git commit -m "build: actualizar dist para producción"
-     git push
-
-2. En el servidor: git pull && reiniciar Node.js
+FLUJO COMPLETO DE DEPLOY
+--------------------------
+1. En local: ejecutar deploy.bat  (build + commit + push)
+2. En Plesk: Git > Pull  (o es automático si tienes webhook)
+3. En Plesk: Node.js > Restart App
 
 
-CONFIGURACIÓN DE server/.env EN PRODUCCIÓN
---------------------------------------------
-DB_DRIVER=mysql
-DB_USER=<usuario_mysql>
-DB_PASSWORD=<contraseña_mysql>
-DB_SERVER=localhost
-DB_PORT=3306
-DB_NAME=<nombre_bd_en_plesk>
-JWT_SECRET=<cadena-larga-aleatoria-mínimo-32-chars>
-JWT_EXPIRES=8h
-CLIENT_URL=https://tu-dominio.com
-NODE_ENV=production
+PASO 1 — LOCAL: ejecutar deploy.bat
+-------------------------------------
+  Doble clic en deploy.bat desde la raíz del proyecto.
+  Hace: build del frontend → commit del dist → git push
 
-⚠️  NUNCA subas el archivo .env al repositorio.
+  Si no cambiaron archivos de src/, igual corre el build
+  para asegurarte de subir el dist actualizado.
 
 
-BASE DE DATOS (phpMyAdmin)
+PASO 2 — PLESK: sincronizar código
+------------------------------------
+  Plesk > tu dominio > Git
+    → "Pull" (botón actualizar)
+
+  O si tienes webhook de GitHub configurado en Plesk,
+  el pull se hace automático al hacer push.
+
+
+PASO 3 — PLESK: reiniciar la app
+----------------------------------
+  Plesk > tu dominio > Node.js
+    → "Restart App"
+
+  Si cambiaron dependencias (package.json):
+    → "npm install" también en esa pantalla
+
+
+CONFIGURACIÓN DE NODE.JS EN PLESK (primera vez)
+-------------------------------------------------
+  Application root:    /httpdocs  (raíz del repo)
+  Application URL:     https://tu-dominio.com
+  Application startup file:  server/src/index.js
+  Node.js version:     18 o superior
+
+  Document root:       /httpdocs/client/dist
+    (Plesk sirve el dist estático; Node.js lo sirve también
+     internamente — cualquiera de los dos funciona)
+
+
+VARIABLES DE ENTORNO EN PLESK (NO usar .env en producción)
+------------------------------------------------------------
+  Plesk > Node.js > Environment Variables:
+
+  DB_DRIVER        mysql
+  DB_USER          <usuario_mysql_plesk>
+  DB_PASSWORD      <contraseña_mysql_plesk>
+  DB_SERVER        localhost
+  DB_PORT          3306
+  DB_NAME          <nombre_bd_plesk>
+  JWT_SECRET       <cadena-larga-aleatoria-mínimo-32-chars>
+  JWT_EXPIRES      8h
+  CLIENT_URL       https://tu-dominio.com
+  NODE_ENV         production
+
+  ⚠️  NO subir el archivo .env al repositorio.
+  ⚠️  Cambiar JWT_SECRET por algo seguro y aleatorio.
+
+
+BASE DE DATOS — phpMyAdmin
 ---------------------------
-- Solo crear la base de datos vacía (CREATE DATABASE).
-- Las tablas se crean automáticamente al arrancar el servidor.
-- Las migraciones (columnas nuevas) también son automáticas.
-- No ejecutar ningún SQL manualmente.
+  - Solo crear la base de datos vacía.
+  - Las tablas y migraciones se crean SOLAS al arrancar Node.js.
+  - No ejecutar ningún SQL manualmente.
 
-
-EN EL SERVIDOR (después de git pull)
---------------------------------------
-npm install --omit=dev        (solo si cambiaron dependencias)
-npm start                     (arranca desde la raíz)
-
-Verificar que todo funciona:
-  GET https://tu-dominio.com/api/health
-  → debe devolver: { "ok": true, "db": "mysql" }
+  Verificar conexión después de reiniciar:
+    GET https://tu-dominio.com/api/health
+    → debe devolver: { "ok": true, "db": "mysql" }
 
 
 ERRORES COMUNES
 ----------------
-- "No se ven los cambios" → faltó correr npm run build antes del push.
-  Solución: ejecutar deploy.bat / deploy.sh
+  "No se ven los cambios"
+    → Faltó correr deploy.bat antes del push,
+      o faltó Pull + Restart en Plesk.
 
-- "Cannot connect to DB" → revisar .env en el servidor.
+  "Cannot connect to DB"
+    → Revisar variables de entorno en Plesk > Node.js.
 
-- "Pantalla en blanco" → revisar que client/dist existe y tiene index.html.
+  "Pantalla en blanco / 404"
+    → Verificar que el Document root en Plesk apunta
+      a /httpdocs/client/dist y que el dist existe.
+
+  "Error 503"
+    → La app Node.js se cayó. Revisar logs en
+      Plesk > Node.js > Log o Plesk > Logs.
 
 ===============================================================
