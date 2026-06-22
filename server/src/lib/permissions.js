@@ -20,7 +20,7 @@ export function effectiveRole(user) {
 
 // Facultades granulares y ASIGNABLES por usuario (el superusuario las tiene todas).
 // Extensible: agrega más claves aquí a futuro.
-export const FACULTADES = ['ventasVer', 'ventasModificar']
+export const FACULTADES = ['ventasVer', 'ventasModificar', 'ventasEliminar']
 
 // Devuelve las facultades efectivas de un usuario.
 export function facultadesDe(user) {

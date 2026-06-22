@@ -100,3 +100,52 @@ export async function deleteOportunidad(req, res) {
   await oportunidadesRepo.remove(req.params.id)
   res.json({ ok: true })
 }
+
+export async function importarOportunidades(req, res) {
+  const { registros } = req.body ?? {}
+  if (!Array.isArray(registros) || registros.length === 0)
+    return res.status(400).json({ error: 'No se recibieron registros.' })
+  if (registros.length > 500)
+    return res.status(400).json({ error: 'Máximo 500 registros por importación.' })
+
+  const todosProductos = await productos.all()
+  const creados = []
+  const errores = []
+
+  for (let i = 0; i < registros.length; i++) {
+    const r = registros[i]
+    const fila = i + 2
+    const nombreProd = String(r.producto || '').trim().toLowerCase()
+    const prod = todosProductos.find((p) => p.nombre.trim().toLowerCase() === nombreProd)
+    if (!prod) { errores.push(`Fila ${fila}: producto "${r.producto}" no encontrado.`); continue }
+
+    const probPct = Number(r.prob_cierre_pct)
+    const body = {
+      prospecto: r.prospecto,
+      tipo: r.tipo,
+      sector: r.sector,
+      responsable: r.responsable,
+      contacto_nombre: r.contacto,
+      contacto_telefono: r.telefono,
+      producto_id: prod.id,
+      unidades: Number(r.unidades),
+      anios: Number(r.anios) || 1,
+      precio_unitario: Number(r.precio_unitario),
+      prob_cierre: Number.isFinite(probPct) ? probPct / 100 : 0.25,
+      etapa: r.etapa || 'Prospecting',
+      trimestre: r.trimestre,
+      mes_estimado: r.mes_estimado,
+      notas: r.notas,
+      fecha_cotizacion: r.fecha_cotizacion,
+      proximo_paso: r.proximo_paso,
+      fecha_sig_paso: r.fecha_sig_paso,
+    }
+    const { error, datos } = await calcular(body)
+    if (error) { errores.push(`Fila ${fila}: ${error}`); continue }
+    creados.push(await oportunidadesRepo.create({ ...datos, createdBy: req.user?.id }))
+  }
+
+  if (creados.length === 0 && errores.length > 0)
+    return res.status(400).json({ error: errores.join(' | ') })
+  res.status(201).json({ importados: creados.length, errores })
+}

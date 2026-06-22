@@ -29,7 +29,10 @@ function bind(reqst, o) {
 export const prospectoRepo = {
   async all() {
     const pool = await getPool()
-    return (await pool.request().query('SELECT * FROM prospectos_activos ORDER BY createdAt DESC')).recordset
+    return (await pool.request().query(`
+      SELECT p.*, (SELECT COUNT(*) FROM reuniones WHERE prospecto_id = p.id) AS num_reuniones
+      FROM prospectos_activos p ORDER BY p.createdAt DESC
+    `)).recordset
   },
   async find(id) {
     const pool = await getPool()
@@ -56,5 +59,10 @@ export const prospectoRepo = {
     const pool = await getPool()
     const r = await pool.request().input('id', sql.NVarChar, id).query('DELETE FROM prospectos_activos WHERE id=@id')
     return r.rowsAffected[0] > 0
+  },
+  async createMany(rows) {
+    const resultados = []
+    for (const o of rows) resultados.push(await this.create(o))
+    return resultados
   },
 }

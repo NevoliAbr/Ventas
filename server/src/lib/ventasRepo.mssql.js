@@ -28,11 +28,11 @@ async function insertarItems(tx, ventaId, items) {
 }
 
 export const ventasRepo = {
-  // Lista ventas con nombre de cliente y número de líneas.
+  // Lista ventas con nombre de origen y número de líneas.
   async all() {
     const pool = await getPool()
     return (await pool.request().query(`
-      SELECT v.*, c.nombre AS cliente_nombre,
+      SELECT v.*, COALESCE(v.origen_nombre, c.nombre) AS cliente_nombre,
              (SELECT COUNT(*) FROM venta_items WHERE venta_id = v.id) AS num_items
       FROM ventas v
       LEFT JOIN clientes c ON c.id = v.cliente_id
@@ -44,7 +44,7 @@ export const ventasRepo = {
   async find(id) {
     const pool = await getPool()
     const venta = first(await pool.request().input('id', sql.NVarChar, id).query(`
-      SELECT v.*, c.nombre AS cliente_nombre
+      SELECT v.*, COALESCE(v.origen_nombre, c.nombre) AS cliente_nombre
       FROM ventas v LEFT JOIN clientes c ON c.id = v.cliente_id
       WHERE v.id = @id`))
     if (!venta) return null
@@ -54,25 +54,27 @@ export const ventasRepo = {
   },
 
   // Crea venta/cotización + líneas en una transacción. Genera un folio legible.
-  async create({ cliente_id, fecha, notas, total, items, createdBy }) {
+  async create({ origen_tipo, origen_id, origen_nombre, fecha, notas, total, items, createdBy }) {
     const pool = await getPool()
     const { recordset } = await pool.request().query('SELECT COUNT(*) AS n FROM ventas')
     const folio = 'COT-' + String(recordset[0].n + 1).padStart(4, '0')
-    const venta = { id: randomUUID(), folio, cliente_id: cliente_id ?? null, fecha, notas: notas ?? null, total, createdBy: createdBy ?? null, createdAt: new Date().toISOString() }
+    const venta = { id: randomUUID(), folio, origen_tipo: origen_tipo ?? null, origen_id: origen_id ?? null, origen_nombre: origen_nombre ?? null, fecha, notas: notas ?? null, total, createdBy: createdBy ?? null, createdAt: new Date().toISOString() }
     const tx = new sql.Transaction(pool)
     await tx.begin()
     try {
       await new sql.Request(tx)
         .input('id', sql.NVarChar, venta.id)
         .input('folio', sql.NVarChar, venta.folio)
-        .input('cliente_id', sql.NVarChar, venta.cliente_id)
+        .input('origen_tipo', sql.NVarChar, venta.origen_tipo)
+        .input('origen_id', sql.NVarChar, venta.origen_id)
+        .input('origen_nombre', sql.NVarChar, venta.origen_nombre)
         .input('fecha', sql.NVarChar, venta.fecha)
         .input('notas', sql.NVarChar, venta.notas)
         .input('total', sql.Decimal(18, 2), venta.total)
         .input('createdBy', sql.NVarChar, venta.createdBy)
         .input('createdAt', sql.NVarChar, venta.createdAt)
-        .query(`INSERT INTO ventas (id, folio, cliente_id, fecha, notas, total, createdBy, createdAt)
-                VALUES (@id, @folio, @cliente_id, @fecha, @notas, @total, @createdBy, @createdAt)`)
+        .query(`INSERT INTO ventas (id, folio, origen_tipo, origen_id, origen_nombre, fecha, notas, total, createdBy, createdAt)
+                VALUES (@id, @folio, @origen_tipo, @origen_id, @origen_nombre, @fecha, @notas, @total, @createdBy, @createdAt)`)
       await insertarItems(tx, venta.id, items)
       await tx.commit()
     } catch (e) {
@@ -83,18 +85,20 @@ export const ventasRepo = {
   },
 
   // Actualiza venta y reemplaza sus líneas.
-  async update(id, { cliente_id, fecha, notas, total, items }) {
+  async update(id, { origen_tipo, origen_id, origen_nombre, fecha, notas, total, items }) {
     const pool = await getPool()
     const tx = new sql.Transaction(pool)
     await tx.begin()
     try {
       await new sql.Request(tx)
         .input('id', sql.NVarChar, id)
-        .input('cliente_id', sql.NVarChar, cliente_id ?? null)
+        .input('origen_tipo', sql.NVarChar, origen_tipo ?? null)
+        .input('origen_id', sql.NVarChar, origen_id ?? null)
+        .input('origen_nombre', sql.NVarChar, origen_nombre ?? null)
         .input('fecha', sql.NVarChar, fecha)
         .input('notas', sql.NVarChar, notas ?? null)
         .input('total', sql.Decimal(18, 2), total)
-        .query('UPDATE ventas SET cliente_id=@cliente_id, fecha=@fecha, notas=@notas, total=@total WHERE id=@id')
+        .query('UPDATE ventas SET origen_tipo=@origen_tipo, origen_id=@origen_id, origen_nombre=@origen_nombre, fecha=@fecha, notas=@notas, total=@total WHERE id=@id')
       await new sql.Request(tx).input('vid', sql.NVarChar, id).query('DELETE FROM venta_items WHERE venta_id=@vid')
       await insertarItems(tx, id, items)
       await tx.commit()

@@ -9,14 +9,14 @@ export function effectiveRole(user) {
 }
 
 // Facultades granulares (asignables). El superusuario las tiene todas.
-export const FACULTADES = ['ventasVer', 'ventasModificar']
+export const FACULTADES = ['ventasVer', 'ventasModificar', 'ventasEliminar']
 
 export function facultadesDe(user) {
   if (effectiveRole(user) === 'superuser') {
-    return { ventasVer: true, ventasModificar: true }
+    return { ventasVer: true, ventasModificar: true, ventasEliminar: true }
   }
   const f = user?.facultades || {}
-  return { ventasVer: !!f.ventasVer, ventasModificar: !!f.ventasModificar }
+  return { ventasVer: !!f.ventasVer, ventasModificar: !!f.ventasModificar, ventasEliminar: !!f.ventasEliminar }
 }
 
 export function permissionsFor(user) {

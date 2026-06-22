@@ -1,36 +1,55 @@
 // Pipeline / Forecast: oportunidades de venta. Reusa el catálogo (rango automático
 // por unidades + banda piso/lista). Calcula valor de contrato y valor ponderado
 // (= valor × probabilidad de cierre). El forecast es la suma de los ponderados.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import * as XLSX from 'xlsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { permissionsFor } from '../lib/permissions.js'
 import { catalogoApi, oportunidadesApi } from '../services/api.js'
 
 const money = (n) => '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
-function exportarCSV(ops) {
-  const cabecera = ['Prospecto', 'Tipo', 'Sector', 'Responsable venta', 'Etapa', 'Unidades', 'Años',
-    'Valor contrato', 'Prob. cierre %', 'Estado', 'Ponderado', 'Trimestre',
-    'Fecha cotización', 'Próximo paso', 'Fecha próx. paso', 'Notas']
-  const esc = (v) => {
-    const s = String(v ?? '')
-    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
-  }
-  const filas = ops.map((o) => [
-    o.prospecto, o.tipo || '', o.sector || '', o.responsable || '',
-    o.etapa || '', o.unidades, o.anios,
-    Number(o.valor_total || 0), Math.round(Number(o.prob_cierre) * 100),
-    PROB_LABELS[Number(o.prob_cierre)] || '',
-    Number(o.valor_ponderado || 0), o.trimestre || '',
-    o.fecha_cotizacion || '', o.proximo_paso || '', o.fecha_sig_paso || '', o.notas || '',
-  ].map(esc).join(','))
-  const csv = [cabecera.join(','), ...filas].join('\r\n')
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url; a.download = `pipeline_${new Date().toISOString().slice(0, 10)}.csv`
-  a.click(); URL.revokeObjectURL(url)
+const MAP_IMPORT = {
+  'prospecto': 'prospecto', 'tipo': 'tipo', 'sector': 'sector', 'responsable': 'responsable',
+  'contacto': 'contacto', 'teléfono': 'telefono', 'producto': 'producto',
+  'unidades': 'unidades', 'años': 'anios', 'precio unit./mes': 'precio_unitario',
+  'prob. cierre %': 'prob_cierre_pct', 'etapa': 'etapa', 'trimestre': 'trimestre',
+  'mes estimado': 'mes_estimado', 'fecha cotización': 'fecha_cotizacion',
+  'próximo paso': 'proximo_paso', 'fecha próx. paso': 'fecha_sig_paso', 'notas': 'notas',
+}
+
+function exportarExcel(ops, productos) {
+  const filas = ops.map((o) => {
+    const prod = productos.find((p) => p.id === o.producto_id)
+    return {
+      'Prospecto': o.prospecto,
+      'Tipo': o.tipo || '',
+      'Sector': o.sector || '',
+      'Responsable': o.responsable || '',
+      'Contacto': o.contacto_nombre || '',
+      'Teléfono': o.contacto_telefono || '',
+      'Producto': prod?.nombre || '',
+      'Unidades': Number(o.unidades),
+      'Años': Number(o.anios),
+      'Precio unit./mes': Number(o.precio_unitario),
+      'Prob. cierre %': Math.round(Number(o.prob_cierre) * 100),
+      'Etapa': o.etapa || '',
+      'Trimestre': o.trimestre || '',
+      'Mes estimado': o.mes_estimado || '',
+      'Fecha cotización': o.fecha_cotizacion || '',
+      'Próximo paso': o.proximo_paso || '',
+      'Fecha próx. paso': o.fecha_sig_paso || '',
+      'Notas': o.notas || '',
+      'Valor contrato': Number(o.valor_total || 0),
+      'Ponderado': Number(o.valor_ponderado || 0),
+    }
+  })
+  const ws = XLSX.utils.json_to_sheet(filas)
+  ws['!cols'] = Object.keys(filas[0] || {}).map(() => ({ wch: 20 }))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Pipeline')
+  XLSX.writeFile(wb, `pipeline_${new Date().toISOString().slice(0, 10)}.xlsx`)
 }
 const ANIOS = [1, 2, 3, 4, 5, 6]
 const TRIMESTRES = ['Q1', 'Q2', 'Q3', 'Q4']
@@ -55,6 +74,7 @@ export default function Pipeline() {
   const navigate = useNavigate()
   const perms = permissionsFor(user)
   const canEdit = perms.facultades.ventasModificar
+  const canDelete = perms.facultades.ventasEliminar
 
   const [productos, setProductos] = useState([])
   const [ops, setOps] = useState([])
@@ -65,6 +85,8 @@ export default function Pipeline() {
   const [aviso, setAviso] = useState(null)
   const [form, setForm] = useState(VACIO)
   const [editId, setEditId] = useState(null)
+  const inputArchivoRef = useRef(null)
+  const [busqueda, setBusqueda] = useState('')
 
   useEffect(() => {
     if (!perms.facultades.ventasVer) { setCargando(false); return }
@@ -77,6 +99,35 @@ export default function Pipeline() {
   const ok = (m) => { setError(null); setAviso(m) }
   const fail = (e) => { setAviso(null); setError(e.message) }
   function salir() { logout(); navigate('/') }
+
+  async function importarExcel(e) {
+    const archivo = e.target.files[0]
+    if (inputArchivoRef.current) inputArchivoRef.current.value = ''
+    if (!archivo) return
+    try {
+      const buffer = await archivo.arrayBuffer()
+      const wb = XLSX.read(buffer, { type: 'array', cellDates: true })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const filas = XLSX.utils.sheet_to_json(ws, { defval: '' })
+      if (filas.length === 0) return fail(new Error('El archivo no tiene datos.'))
+      const registros = filas.map((fila) => {
+        const reg = {}
+        for (const [col, val] of Object.entries(fila)) {
+          const campo = MAP_IMPORT[col.trim().toLowerCase()]
+          if (campo) reg[campo] = val instanceof Date
+            ? val.toISOString().slice(0, 10)
+            : String(val ?? '').trim()
+        }
+        return reg
+      }).filter((r) => r.prospecto)
+      if (registros.length === 0) return fail(new Error('No se encontraron filas con prospecto válido.'))
+      const { importados, errores } = await oportunidadesApi.importar(registros)
+      const { oportunidades } = await oportunidadesApi.list()
+      setOps(oportunidades)
+      const msg = `${importados} oportunidades importadas.` + (errores?.length ? ` (${errores.length} omitidas)` : '')
+      ok(msg)
+    } catch (err) { fail(err) }
+  }
 
   const vendibles = useMemo(() => productos.filter((p) => (p.tipos_venta || []).length > 0), [productos])
   const prodSel = productos.find((p) => p.id === form.productoId)
@@ -160,7 +211,14 @@ export default function Pipeline() {
             <h1 className="dash-greeting">Pipeline y Forecast</h1>
             <p className="dash-subtitle">Oportunidades · valor ponderado = valor × probabilidad de cierre</p>
           </div>
-          <button className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
+          <div className="slds-grid slds-grid_vertical-align-center" style={{ gap: 8 }}>
+            {ops.length > 0 && <button className="slds-button slds-button_neutral" onClick={() => exportarExcel(ops, productos)}>⬇ Exportar</button>}
+            {canEdit && (<>
+              <button className="slds-button slds-button_neutral" onClick={() => inputArchivoRef.current?.click()}>⬆ Importar</button>
+              <input ref={inputArchivoRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={importarExcel} />
+            </>)}
+            <button className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
+          </div>
         </div>
 
         {error && <div className="slds-text-color_error slds-m-bottom_small" role="alert">⚠️ {error}</div>}
@@ -246,17 +304,26 @@ export default function Pipeline() {
           </div>
         )}
 
+        {/* Buscador */}
+        <div className="slds-m-bottom_small" style={{ maxWidth: 340 }}>
+          <label className="slds-form-element__label">Buscar</label>
+          <input className="slds-input" placeholder="Empresa, sector, responsable…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+        </div>
+
         <div className="slds-box slds-theme_default">
+          {(() => {
+            const q = busqueda.toLowerCase()
+            const opsMostradas = busqueda
+              ? ops.filter((o) => [o.prospecto, o.tipo, o.sector, o.responsable, o.contacto_nombre, o.etapa]
+                  .some((v) => (v || '').toLowerCase().includes(q)))
+              : ops
+            return (
+          <>
           <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
-            <h2 className="slds-text-heading_small">Oportunidades</h2>
-            {ops.length > 0 && (
-              <button className="slds-button slds-button_neutral" onClick={() => exportarCSV(ops)}>
-                ⬇ Exportar CSV
-              </button>
-            )}
+            <h2 className="slds-text-heading_small">Oportunidades ({opsMostradas.length}{busqueda ? ` de ${ops.length}` : ''})</h2>
           </div>
-          {cargando ? <p className="slds-text-color_weak">Cargando…</p> : ops.length === 0 ? (
-            <p className="slds-text-color_weak">Aún no hay oportunidades.</p>
+          {cargando ? <p className="slds-text-color_weak">Cargando…</p> : opsMostradas.length === 0 ? (
+            <p className="slds-text-color_weak">{busqueda ? 'Sin resultados para esa búsqueda.' : 'Aún no hay oportunidades.'}</p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
             <table className="slds-table slds-table_bordered slds-table_cell-buffer">
@@ -264,10 +331,10 @@ export default function Pipeline() {
                 <th>Empresa</th><th>Tipo</th><th>Sector</th><th>Responsable</th><th>Contacto</th>
                 <th>Etapa</th><th>Unid.</th><th>Años</th><th>Valor contrato</th>
                 <th>Prob.</th><th>Estado</th><th>Ponderado</th><th>Trim.</th><th>F. cotiz.</th><th>Próx. paso</th>
-                {canEdit && <th>Acciones</th>}
+                {(canEdit || canDelete) && <th>Acciones</th>}
               </tr></thead>
               <tbody>
-                {ops.map((o) => (
+                {opsMostradas.map((o) => (
                   <tr key={o.id}>
                     <td><strong>{o.prospecto}</strong></td>
                     <td>{o.tipo || '—'}</td>
@@ -287,9 +354,9 @@ export default function Pipeline() {
                       {o.proximo_paso || '—'}
                       {o.fecha_sig_paso && <><br /><span className="slds-text-body_small">{o.fecha_sig_paso}</span></>}
                     </td>
-                    {canEdit && <td>
-                      <button className="slds-button slds-button_neutral" onClick={() => editar(o)}>Editar</button>{' '}
-                      <button className="slds-button slds-button_text-destructive" onClick={() => eliminar(o)}>Eliminar</button>
+                    {(canEdit || canDelete) && <td>
+                      {canEdit && <><button className="slds-button slds-button_neutral" onClick={() => editar(o)}>Editar</button>{' '}</>}
+                      {canDelete && <button className="slds-button slds-button_text-destructive" onClick={() => eliminar(o)}>Eliminar</button>}
                     </td>}
                   </tr>
                 ))}
@@ -297,6 +364,9 @@ export default function Pipeline() {
             </table>
             </div>
           )}
+          </>
+            )
+          })()}
         </div>
       </div>
     </div>

@@ -126,6 +126,9 @@ async function ensureSchema(pool) {
     )`)
   // Por si la tabla ventas existía sin la columna folio:
   await pool.request().query(`IF COL_LENGTH('ventas','folio') IS NULL ALTER TABLE ventas ADD folio NVARCHAR(40) NULL`)
+  await pool.request().query(`IF COL_LENGTH('ventas','origen_tipo') IS NULL ALTER TABLE ventas ADD origen_tipo NVARCHAR(20) NULL`)
+  await pool.request().query(`IF COL_LENGTH('ventas','origen_id') IS NULL ALTER TABLE ventas ADD origen_id NVARCHAR(64) NULL`)
+  await pool.request().query(`IF COL_LENGTH('ventas','origen_nombre') IS NULL ALTER TABLE ventas ADD origen_nombre NVARCHAR(200) NULL`)
 
   // Líneas de cada cotización (snapshot). cantidad = unidades; precio_unitario = $/unidad/mes;
   // ingreso_mensual = precio × unidades; ingreso_anual = ×12; subtotal = anual × anios.
@@ -183,6 +186,7 @@ async function ensureSchema(pool) {
       createdBy         NVARCHAR(64)  NULL,
       createdAt         NVARCHAR(40)  NOT NULL
     )`)
+  await pool.request().query(`IF COL_LENGTH('universo','es_prospecto') IS NULL ALTER TABLE universo ADD es_prospecto BIT NOT NULL CONSTRAINT DF_uni_esp DEFAULT 0`)
   await pool.request().query(`IF COL_LENGTH('oportunidades','responsable') IS NULL ALTER TABLE oportunidades ADD responsable NVARCHAR(200) NULL`)
   await pool.request().query(`IF COL_LENGTH('oportunidades','tipo') IS NULL ALTER TABLE oportunidades ADD tipo NVARCHAR(30) NULL`)
   await pool.request().query(`IF COL_LENGTH('oportunidades','contacto_nombre') IS NULL ALTER TABLE oportunidades ADD contacto_nombre NVARCHAR(200) NULL`)
@@ -209,6 +213,7 @@ async function ensureSchema(pool) {
       fecha_contacto   NVARCHAR(40)  NULL,
       status_contacto  NVARCHAR(30)  NOT NULL CONSTRAINT DF_uni_status DEFAULT 'Sin contacto',
       etapa_pipeline   NVARCHAR(30)  NOT NULL CONSTRAINT DF_uni_etapa  DEFAULT 'Universo',
+      es_prospecto     BIT           NOT NULL CONSTRAINT DF_uni_esp    DEFAULT 0,
       createdAt        NVARCHAR(40)  NOT NULL
     )`)
 
@@ -232,6 +237,34 @@ async function ensureSchema(pool) {
       pasa_forecast      BIT           NOT NULL CONSTRAINT DF_pr_pasa  DEFAULT 0,
       createdAt          NVARCHAR(40)  NOT NULL
     )`)
+
+  await pool.request().query(`
+    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='reuniones' AND xtype='U')
+    CREATE TABLE reuniones (
+      id           NVARCHAR(64)  NOT NULL PRIMARY KEY,
+      prospecto_id NVARCHAR(64)  NOT NULL,
+      numero       INT           NOT NULL CONSTRAINT DF_reu_num DEFAULT 1,
+      fecha        NVARCHAR(40)  NOT NULL,
+      status       NVARCHAR(30)  NULL,
+      observaciones NVARCHAR(MAX) NULL,
+      createdAt    NVARCHAR(40)  NOT NULL
+    )`)
+
+  // Migrar reuniones existentes (idempotente)
+  await pool.request().query(`
+    INSERT INTO reuniones (id, prospecto_id, numero, fecha, status, observaciones, createdAt)
+    SELECT NEWID(), id, 1, fecha_1ra_reunion, status_1ra_reunion, obs_1ra_reunion, createdAt
+    FROM prospectos_activos
+    WHERE fecha_1ra_reunion IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM reuniones r WHERE r.prospecto_id = prospectos_activos.id AND r.numero = 1)
+  `)
+  await pool.request().query(`
+    INSERT INTO reuniones (id, prospecto_id, numero, fecha, status, observaciones, createdAt)
+    SELECT NEWID(), id, 2, fecha_2da_reunion, status_2da_reunion, obs_2da_reunion, createdAt
+    FROM prospectos_activos
+    WHERE fecha_2da_reunion IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM reuniones r WHERE r.prospecto_id = prospectos_activos.id AND r.numero = 2)
+  `)
 }
 
 export { sql }

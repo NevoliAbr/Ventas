@@ -156,6 +156,7 @@ async function ensureSchema(pool) {
       fecha_contacto   VARCHAR(40)  NULL,
       status_contacto  VARCHAR(30)  NOT NULL DEFAULT 'Sin contacto',
       etapa_pipeline   VARCHAR(30)  NOT NULL DEFAULT 'Universo',
+      es_prospecto     TINYINT(1)   NOT NULL DEFAULT 0,
       createdAt        VARCHAR(40)  NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
@@ -176,9 +177,38 @@ async function ensureSchema(pool) {
       pasa_forecast      TINYINT(1)   NOT NULL DEFAULT 0,
       createdAt          VARCHAR(40)  NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
+    `CREATE TABLE IF NOT EXISTS reuniones (
+      id           VARCHAR(64)  NOT NULL PRIMARY KEY,
+      prospecto_id VARCHAR(64)  NOT NULL,
+      numero       INT          NOT NULL DEFAULT 1,
+      fecha        VARCHAR(40)  NOT NULL,
+      status       VARCHAR(30)  NULL,
+      observaciones TEXT        NULL,
+      createdAt    VARCHAR(40)  NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
   ]
   for (const ddl of tablas) await pool.query(ddl)
   // Migraciones: columnas nuevas en tablas ya existentes.
+  await pool.query(`ALTER TABLE universo ADD COLUMN IF NOT EXISTS es_prospecto TINYINT(1) NOT NULL DEFAULT 0`)
+  await pool.query(`ALTER TABLE ventas ADD COLUMN IF NOT EXISTS origen_tipo VARCHAR(20) NULL`)
+  await pool.query(`ALTER TABLE ventas ADD COLUMN IF NOT EXISTS origen_id VARCHAR(64) NULL`)
+  await pool.query(`ALTER TABLE ventas ADD COLUMN IF NOT EXISTS origen_nombre VARCHAR(200) NULL`)
+  // Migrar reuniones existentes de prospectos_activos → tabla reuniones (idempotente)
+  await pool.query(`
+    INSERT IGNORE INTO reuniones (id, prospecto_id, numero, fecha, status, observaciones, createdAt)
+    SELECT UUID(), id, 1, fecha_1ra_reunion, status_1ra_reunion, obs_1ra_reunion, createdAt
+    FROM prospectos_activos
+    WHERE fecha_1ra_reunion IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM reuniones r WHERE r.prospecto_id = prospectos_activos.id AND r.numero = 1)
+  `)
+  await pool.query(`
+    INSERT IGNORE INTO reuniones (id, prospecto_id, numero, fecha, status, observaciones, createdAt)
+    SELECT UUID(), id, 2, fecha_2da_reunion, status_2da_reunion, obs_2da_reunion, createdAt
+    FROM prospectos_activos
+    WHERE fecha_2da_reunion IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM reuniones r WHERE r.prospecto_id = prospectos_activos.id AND r.numero = 2)
+  `)
   await pool.query(`ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS responsable VARCHAR(200) NULL`)
   await pool.query(`ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS tipo VARCHAR(30) NULL`)
   await pool.query(`ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS contacto_nombre VARCHAR(200) NULL`)

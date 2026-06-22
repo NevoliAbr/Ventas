@@ -12,9 +12,9 @@ export default function Inicio() {
   // Secciones del inicio. Las que tienen destino real enlazan; el resto son
   // placeholders ("Próximamente").
   const SECCIONES = [
-    { icono: '📊', tint: '#e8f3ff', titulo: 'Dashboard', desc: 'Métricas y resumen de ventas', to: '/dashboard' },
+    { icono: '/ico/Dashboard-1.ico', tint: '#e8f3ff', titulo: 'Dashboard', desc: 'Métricas y resumen de ventas', to: '/dashboard' },
     {
-      icono: '🧾',
+      icono: '/ico/Cotización-1.ico',
       tint: '#eafaf0',
       titulo: 'Cotización',
       desc: 'Simula una venta / genera una cotización',
@@ -22,7 +22,7 @@ export default function Inicio() {
       badge: perms.facultades.ventasVer ? null : 'Sin acceso',
     },
     {
-      icono: '🧮',
+      icono: '/ico/Configuración-de-Venta-2.ico',
       tint: '#e8f3ff',
       titulo: 'Configuración de ventas',
       desc: 'Productos, rangos, clientes y unidades',
@@ -30,7 +30,7 @@ export default function Inicio() {
       badge: perms.facultades.ventasVer ? null : 'Sin acceso',
     },
     {
-      icono: '🌐',
+      icono: '/ico/Universo.ico',
       tint: '#f0f4ff',
       titulo: 'Universo',
       desc: 'Lista de prospectos y primer contacto',
@@ -38,7 +38,7 @@ export default function Inicio() {
       badge: perms.facultades.ventasVer ? null : 'Sin acceso',
     },
     {
-      icono: '🤝',
+      icono: '/ico/Prospectos.ico',
       tint: '#f0fff4',
       titulo: 'Prospectos',
       desc: 'Seguimiento de reuniones activas',
@@ -46,16 +46,16 @@ export default function Inicio() {
       badge: perms.facultades.ventasVer ? null : 'Sin acceso',
     },
     {
-      icono: '📈',
+      icono: '/ico/Pipeline-_-forecast.ico',
       tint: '#fff6e6',
       titulo: 'Pipeline / Forecast',
       desc: 'Oportunidades y pronóstico ponderado',
       to: perms.facultades.ventasVer ? '/pipeline' : null,
       badge: perms.facultades.ventasVer ? null : 'Sin acceso',
     },
-    { icono: '👥', tint: '#fef0f0', titulo: 'Clientes', desc: 'Gestiona tu cartera de clientes', to: null },
+    { icono: '/ico/Clientes.ico', tint: '#fef0f0', titulo: 'Clientes', desc: 'Gestiona tu cartera de clientes', to: null },
     {
-      icono: '⚙️',
+      icono: '/ico/Configuración.ico',
       tint: '#eef0f2',
       titulo: 'Configuración',
       desc: 'Usuarios y permisos',
@@ -75,8 +75,10 @@ export default function Inicio() {
         {/* Barra superior */}
         <div className="dash-topbar">
           <div>
-            <h1 className="dash-greeting">Hola, {user?.nombre} 👋</h1>
-            <p className="dash-subtitle">Bienvenido a Ventas. ¿Qué quieres hacer hoy?</p>
+            <h1 className="dash-greeting">
+              Hola, {user?.nombre} <img src="/ico/icono_mano.ico" alt="" width={80} height={80} style={{ verticalAlign: 'middle', position: 'relative', top: '-8px' }} />
+            </h1>
+            <p className="dash-subtitle">Bienvenido a Business Development. ¿Qué quieres hacer hoy?</p>
           </div>
           <button type="button" className="slds-button slds-button_neutral" onClick={salir}>
             Cerrar sesión
@@ -88,8 +90,8 @@ export default function Inicio() {
           {SECCIONES.map((s) => {
             const contenido = (
               <>
-                <div className="home-tile-icon" style={{ background: s.tint }}>
-                  {s.icono}
+                <div className="home-tile-icon">
+                  <img src={s.icono} alt={s.titulo} width={72} height={72} style={{ objectFit: 'contain' }} />
                 </div>
                 <h2 className="home-tile-title">
                   {s.titulo}

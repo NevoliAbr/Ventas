@@ -21,7 +21,16 @@ function valores(o) {
 export const universoRepo = {
   async all() {
     const pool = await getPool()
-    const [rows] = await pool.query('SELECT * FROM universo ORDER BY createdAt DESC')
+    const [rows] = await pool.query(
+      "SELECT * FROM universo WHERE es_prospecto=0 AND etapa_pipeline != 'Prospecto' ORDER BY createdAt DESC"
+    )
+    return rows
+  },
+  async pendientes() {
+    const pool = await getPool()
+    const [rows] = await pool.query(
+      "SELECT * FROM universo WHERE etapa_pipeline='Prospecto' AND es_prospecto=0 ORDER BY createdAt DESC"
+    )
     return rows
   },
   async find(id) {
@@ -40,6 +49,17 @@ export const universoRepo = {
     )
     return row
   },
+  async crearOculto(o) {
+    const pool = await getPool()
+    const row = { ...o, id: randomUUID(), createdAt: new Date().toISOString() }
+    const cols = ['id', ...CAMPOS, 'es_prospecto', 'createdAt']
+    const vals = [row.id, ...valores(row), 1, row.createdAt]
+    await pool.query(
+      `INSERT INTO universo (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`,
+      vals,
+    )
+    return row
+  },
   async update(id, o) {
     const pool = await getPool()
     await pool.query(
@@ -52,6 +72,18 @@ export const universoRepo = {
     const pool = await getPool()
     const [r] = await pool.query('DELETE FROM universo WHERE id=?', [id])
     return r.affectedRows > 0
+  },
+  async convertir(id) {
+    const pool = await getPool()
+    await pool.query('UPDATE universo SET es_prospecto=1 WHERE id=?', [id])
+  },
+  async createMany(rows) {
+    const resultados = []
+    for (const o of rows) {
+      const row = await this.create(o)
+      resultados.push(row)
+    }
+    return resultados
   },
   async seedIfEmpty(data) {
     const pool = await getPool()

@@ -1,10 +1,53 @@
 // Universo de prospectos: lista de todas las empresas/municipios potenciales.
 // Flujo: Sin contacto → Contactado → Siguientes pasos → Primera reunión → (pasa a Prospectos)
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import * as XLSX from 'xlsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { permissionsFor } from '../lib/permissions.js'
 import { universoApi } from '../services/api.js'
+
+const COLUMNAS_PLANTILLA = [
+  'Empresa / Municipio', 'Rubro / Sector', 'Segmento', 'Tipo',
+  'Nombre Contacto', 'Email', 'Teléfono', 'Sitio Web', 'LinkedIn',
+  'Responsable LCG', 'Fecha 1er Contacto', 'Status Contacto', 'Etapa Pipeline',
+]
+const MAP_COLUMNAS = {
+  'empresa / municipio': 'empresa', 'rubro / sector': 'rubro', 'segmento': 'segmento',
+  'tipo': 'tipo', 'nombre contacto': 'contacto_nombre', 'email': 'email',
+  'teléfono': 'telefono', 'sitio web': 'sitio_web', 'linkedin': 'linkedin',
+  'responsable lcg': 'responsable', 'fecha 1er contacto': 'fecha_contacto',
+  'status contacto': 'status_contacto', 'etapa pipeline': 'etapa_pipeline',
+}
+
+function exportarExcel(lista) {
+  const filas = lista.map((r) => ({
+    'Empresa / Municipio': r.empresa,
+    'Rubro / Sector': r.rubro || '',
+    'Segmento': r.segmento || '',
+    'Tipo': r.tipo || '',
+    'Nombre Contacto': r.contacto_nombre || '',
+    'Email': r.email || '',
+    'Teléfono': r.telefono || '',
+    'Sitio Web': r.sitio_web || '',
+    'LinkedIn': r.linkedin || '',
+    'Responsable LCG': r.responsable || '',
+    'Fecha 1er Contacto': r.fecha_contacto || '',
+    'Status Contacto': r.status_contacto || '',
+    'Etapa Pipeline': r.etapa_pipeline || '',
+  }))
+  const ws = XLSX.utils.json_to_sheet(filas)
+  ws['!cols'] = COLUMNAS_PLANTILLA.map((c) => ({ wch: Math.max(c.length + 4, 18) }))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Universo')
+  XLSX.writeFile(wb, `universo_${new Date().toISOString().slice(0, 10)}.xlsx`)
+}
+
+const waLink = (tel) => {
+  const digits = tel.replace(/\D/g, '')
+  const num = digits.length === 10 ? `52${digits}` : digits
+  return `https://wa.me/${num}`
+}
 
 const STATUS_COLORS = {
   'Sin contacto': '#6b7280',
@@ -26,6 +69,7 @@ export default function Universo() {
   const navigate = useNavigate()
   const perms = permissionsFor(user)
   const canEdit = perms.facultades.ventasModificar
+  const canDelete = perms.facultades.ventasEliminar
 
   const [lista, setLista] = useState([])
   const [opts, setOpts] = useState({ statusOptions: [], etapasOptions: [], tipos: [], segmentos: [] })
@@ -36,6 +80,8 @@ export default function Universo() {
   const [editId, setEditId] = useState(null)
   const [filtroStatus, setFiltroStatus] = useState('')
   const [filtroEtapa, setFiltroEtapa] = useState('')
+  const [busqueda, setBusqueda] = useState('')
+  const inputArchivoRef = useRef(null)
 
   useEffect(() => {
     if (!perms.facultades.ventasVer) { setCargando(false); return }
@@ -53,6 +99,11 @@ export default function Universo() {
   const listaMostrada = lista.filter((r) => {
     if (filtroStatus && r.status_contacto !== filtroStatus) return false
     if (filtroEtapa && r.etapa_pipeline !== filtroEtapa) return false
+    if (busqueda) {
+      const q = busqueda.toLowerCase()
+      return [r.empresa, r.rubro, r.segmento, r.contacto_nombre, r.email, r.telefono, r.responsable]
+        .some((v) => (v || '').toLowerCase().includes(q))
+    }
     return true
   })
 
@@ -61,8 +112,13 @@ export default function Universo() {
     try {
       if (editId) {
         const { prospecto } = await universoApi.update(editId, form)
-        setLista((p) => p.map((r) => (r.id === editId ? prospecto : r)))
-        ok('Prospecto actualizado.')
+        if (form.etapa_pipeline === 'Prospecto') {
+          setLista((p) => p.filter((r) => r.id !== editId))
+          ok(`${form.empresa} quedó pendiente en Prospectos — ábrelo para completar los datos.`)
+        } else {
+          setLista((p) => p.map((r) => (r.id === editId ? prospecto : r)))
+          ok('Prospecto actualizado.')
+        }
       } else {
         const { prospecto } = await universoApi.create(form)
         setLista((p) => [prospecto, ...p])
@@ -82,6 +138,35 @@ export default function Universo() {
       status_contacto: r.status_contacto || 'Sin contacto', etapa_pipeline: r.etapa_pipeline || 'Universo',
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  async function importarExcel(e) {
+    const archivo = e.target.files[0]
+    if (!inputArchivoRef.current) return
+    inputArchivoRef.current.value = ''
+    if (!archivo) return
+    try {
+      const buffer = await archivo.arrayBuffer()
+      const wb = XLSX.read(buffer, { type: 'array', cellDates: true })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const filas = XLSX.utils.sheet_to_json(ws, { defval: '' })
+      if (filas.length === 0) return fail(new Error('El archivo no tiene datos.'))
+      const registros = filas.map((fila) => {
+        const reg = {}
+        for (const [col, val] of Object.entries(fila)) {
+          const campo = MAP_COLUMNAS[col.trim().toLowerCase()]
+          if (campo) reg[campo] = val instanceof Date
+            ? val.toISOString().slice(0, 10)
+            : String(val ?? '').trim()
+        }
+        return reg
+      }).filter((r) => r.empresa)
+      if (registros.length === 0) return fail(new Error('No se encontraron filas con empresa válida.'))
+      const { importados } = await universoApi.importar(registros)
+      const nuevos = await universoApi.list()
+      setLista(nuevos.universo)
+      ok(`${importados} registros importados correctamente.`)
+    } catch (err) { fail(err) }
   }
 
   async function eliminar(r) {
@@ -108,7 +193,16 @@ export default function Universo() {
             <h1 className="dash-greeting">Universo de Prospectos</h1>
             <p className="dash-subtitle">Registra todas las empresas y municipios potenciales · Avanza su status hasta Primera reunión → pasa a Prospectos</p>
           </div>
-          <button className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
+          <div className="slds-grid slds-grid_vertical-align-center" style={{ gap: 8 }}>
+            {lista.length > 0 && (
+              <button className="slds-button slds-button_neutral" onClick={() => exportarExcel(listaMostrada)}>⬇ Exportar</button>
+            )}
+            {canEdit && (<>
+              <button className="slds-button slds-button_neutral" onClick={() => inputArchivoRef.current?.click()}>⬆ Importar</button>
+              <input ref={inputArchivoRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={importarExcel} />
+            </>)}
+            <button className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
+          </div>
         </div>
 
         {error && <div className="slds-text-color_error slds-m-bottom_small" role="alert">⚠️ {error}</div>}
@@ -202,15 +296,19 @@ export default function Universo() {
         )}
 
         {/* Filtros */}
-        <div className="slds-grid slds-gutters slds-m-bottom_small">
+        <div className="slds-grid slds-gutters slds-m-bottom_small" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="slds-col" style={{ minWidth: 220, maxWidth: 320 }}>
+            <label className="slds-form-element__label">Buscar</label>
+            <input className="slds-input" placeholder="Empresa, contacto, email…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          </div>
           <div className="slds-col slds-grow-none" style={{ maxWidth: 180 }}>
-            <label className="slds-form-element__label">Filtrar por status</label>
+            <label className="slds-form-element__label">Status</label>
             <div className="slds-select_container"><select className="slds-select" value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}>
               <option value="">Todos</option>{(opts.statusOptions || []).map((s) => <option key={s} value={s}>{s}</option>)}
             </select></div>
           </div>
           <div className="slds-col slds-grow-none" style={{ maxWidth: 180 }}>
-            <label className="slds-form-element__label">Filtrar por etapa</label>
+            <label className="slds-form-element__label">Etapa</label>
             <div className="slds-select_container"><select className="slds-select" value={filtroEtapa} onChange={(e) => setFiltroEtapa(e.target.value)}>
               <option value="">Todas</option>{(opts.etapasOptions || []).map((e) => <option key={e} value={e}>{e}</option>)}
             </select></div>
@@ -230,7 +328,7 @@ export default function Universo() {
                 <thead><tr className="slds-line-height_reset">
                   <th>Empresa</th><th>Rubro</th><th>Seg.</th><th>Contacto</th><th>Teléfono</th>
                   <th>Responsable</th><th>1er contacto</th><th>Status</th><th>Etapa</th>
-                  {canEdit && <th>Acciones</th>}
+                  {(canEdit || canDelete) && <th>Acciones</th>}
                 </tr></thead>
                 <tbody>
                   {listaMostrada.map((r) => (
@@ -241,15 +339,22 @@ export default function Universo() {
                       </td>
                       <td>{r.rubro || '—'}</td>
                       <td>{r.segmento || '—'}</td>
-                      <td>{r.contacto_nombre || '—'}{r.email && <><br /><span className="slds-text-body_small">{r.email}</span></>}</td>
-                      <td>{r.telefono || '—'}</td>
+                      <td>
+                        {r.contacto_nombre || '—'}
+                        {r.email && <><br /><a href={`mailto:${r.email}`} className="slds-text-body_small">{r.email}</a></>}
+                      </td>
+                      <td>
+                        {r.telefono
+                          ? <a href={waLink(r.telefono)} target="_blank" rel="noreferrer">{r.telefono}</a>
+                          : '—'}
+                      </td>
                       <td>{r.responsable || '—'}</td>
                       <td>{r.fecha_contacto || '—'}</td>
                       <td><span className="role-badge" style={{ background: STATUS_COLORS[r.status_contacto] || '#6b7280', color: '#fff', fontSize: '0.72rem' }}>{r.status_contacto}</span></td>
                       <td>{r.etapa_pipeline || '—'}</td>
-                      {canEdit && <td>
-                        <button className="slds-button slds-button_neutral" onClick={() => editar(r)}>Editar</button>{' '}
-                        <button className="slds-button slds-button_text-destructive" onClick={() => eliminar(r)}>Eliminar</button>
+                      {(canEdit || canDelete) && <td>
+                        {canEdit && <><button className="slds-button slds-button_neutral" onClick={() => editar(r)}>Editar</button>{' '}</>}
+                        {canDelete && <button className="slds-button slds-button_text-destructive" onClick={() => eliminar(r)}>Eliminar</button>}
                       </td>}
                     </tr>
                   ))}

@@ -242,8 +242,10 @@ function ClientesTab({ clientes, setClientes, canEdit, ok, fail }) {
 }
 
 /* --------------------------- Productos + tipos --------------------------- */
+const CATALOGO_SERVICIOS = ['SITEM', 'SIBOP', 'SITAG', 'SGAPAS']
+
 function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) {
-  const VACIO = { nombre: '', tipo: 'producto', sector: '', unidad_id: '' }
+  const VACIO = { nombre: CATALOGO_SERVICIOS[0], tipo: 'producto', sector: '', unidad_id: '' }
   const [form, setForm] = useState(VACIO)
   const unidadNombre = (id) => unidades.find((u) => u.id === id)?.nombre || '—'
 
@@ -268,8 +270,10 @@ function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) 
         <div className="slds-box slds-theme_default slds-m-bottom_medium">
           <h2 className="slds-text-heading_small slds-m-bottom_small">Nuevo producto / servicio</h2>
           <form className="slds-grid slds-gutters slds-grid_vertical-align-end" onSubmit={crear}>
-            <div className="slds-col"><label className="slds-form-element__label">Nombre</label>
-              <input className="slds-input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Ej. SITEM Geolocalización" required /></div>
+            <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Servicio</label>
+              <div className="slds-select_container"><select className="slds-select" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })}>
+                {CATALOGO_SERVICIOS.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select></div></div>
             <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Sector</label>
               <input className="slds-input" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} placeholder="Privado / Público" style={{ maxWidth: 150 }} /></div>
             <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Tipo</label>
@@ -278,7 +282,7 @@ function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) 
             <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Unidad</label>
               <div className="slds-select_container"><select className="slds-select" value={form.unidad_id} onChange={(e) => setForm({ ...form, unidad_id: e.target.value })}>
                 <option value="">—</option>{unidades.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}</select></div></div>
-            <div className="slds-col slds-grow-none"><button className="slds-button slds-button_brand" type="submit">Agregar</button></div>
+            <div className="slds-col slds-grow-none"><button className="slds-button slds-button_brand" type="submit">Agregar Servicio</button></div>
           </form>
         </div>
       )}

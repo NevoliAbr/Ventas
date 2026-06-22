@@ -71,4 +71,9 @@ export const oportunidadesRepo = {
     const r = await pool.request().input('id', sql.NVarChar, id).query('DELETE FROM oportunidades WHERE id=@id')
     return r.rowsAffected[0] > 0
   },
+  async createMany(rows) {
+    const resultados = []
+    for (const o of rows) resultados.push(await this.create(o))
+    return resultados
+  },
 }

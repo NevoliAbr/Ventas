@@ -22,7 +22,10 @@ function valores(o) {
 export const prospectoRepo = {
   async all() {
     const pool = await getPool()
-    const [rows] = await pool.query('SELECT * FROM prospectos_activos ORDER BY createdAt DESC')
+    const [rows] = await pool.query(`
+      SELECT p.*, (SELECT COUNT(*) FROM reuniones WHERE prospecto_id = p.id) AS num_reuniones
+      FROM prospectos_activos p ORDER BY p.createdAt DESC
+    `)
     return rows
   },
   async find(id) {
@@ -53,5 +56,10 @@ export const prospectoRepo = {
     const pool = await getPool()
     const [r] = await pool.query('DELETE FROM prospectos_activos WHERE id=?', [id])
     return r.affectedRows > 0
+  },
+  async createMany(rows) {
+    const resultados = []
+    for (const o of rows) resultados.push(await this.create(o))
+    return resultados
   },
 }

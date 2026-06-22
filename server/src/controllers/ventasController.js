@@ -2,7 +2,7 @@
 // cantidad >= mínimo y precio dentro de [precio_min, precio_max]. El total se
 // calcula en el servidor (no se confía en el cliente) y se guarda snapshot.
 import { ventasRepo } from '../lib/ventasStore.js'
-import { productos, clientes, tiposVenta, unidades } from '../lib/catalogoStore.js'
+import { productos, tiposVenta, unidades } from '../lib/catalogoStore.js'
 
 const round2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100
 
@@ -89,18 +89,18 @@ export async function getVenta(req, res) {
   res.json({ venta })
 }
 
-// POST /api/ventas  { cliente_id, fecha, notas, items: [{producto_id, tipo_venta_id, cantidad, precio_unitario}] }
+const ORIGENES = ['universo', 'prospecto', 'oportunidad']
+
+// POST /api/ventas  { origen_tipo, origen_id, origen_nombre, fecha, notas, items: [...] }
 export async function createVenta(req, res) {
-  const { cliente_id, fecha, notas, items } = req.body ?? {}
-  if (cliente_id) {
-    const c = await clientes.find(cliente_id)
-    if (!c) return res.status(400).json({ error: 'Cliente no encontrado.' })
-  }
+  const { origen_tipo, origen_id, origen_nombre, fecha, notas, items } = req.body ?? {}
   const { error, lineas, total } = await construirLineas(items)
   if (error) return res.status(400).json({ error })
 
   const venta = await ventasRepo.create({
-    cliente_id: cliente_id || null,
+    origen_tipo: ORIGENES.includes(origen_tipo) ? origen_tipo : null,
+    origen_id: origen_id || null,
+    origen_nombre: origen_nombre?.trim() || null,
     fecha: fecha || new Date().toISOString().slice(0, 10),
     notas: notas || null,
     total,
@@ -115,16 +115,14 @@ export async function updateVenta(req, res) {
   const existe = await ventasRepo.find(req.params.id)
   if (!existe) return res.status(404).json({ error: 'Venta no encontrada.' })
 
-  const { cliente_id, fecha, notas, items } = req.body ?? {}
-  if (cliente_id) {
-    const c = await clientes.find(cliente_id)
-    if (!c) return res.status(400).json({ error: 'Cliente no encontrado.' })
-  }
+  const { origen_tipo, origen_id, origen_nombre, fecha, notas, items } = req.body ?? {}
   const { error, lineas, total } = await construirLineas(items)
   if (error) return res.status(400).json({ error })
 
   const venta = await ventasRepo.update(req.params.id, {
-    cliente_id: cliente_id || null,
+    origen_tipo: ORIGENES.includes(origen_tipo) ? origen_tipo : null,
+    origen_id: origen_id || null,
+    origen_nombre: origen_nombre?.trim() || null,
     fecha: fecha || existe.fecha,
     notas: notas || null,
     total,

@@ -121,20 +121,33 @@ export const oportunidadesApi = {
   create: (d) => authPost('/oportunidades', d),
   update: (id, d) => authPatch(`/oportunidades/${id}`, d),
   remove: (id) => authDelete(`/oportunidades/${id}`),
+  importar: (registros) => authPost('/oportunidades/importar', { registros }),
 }
 
 // --- Universo de prospectos ---
 export const universoApi = {
   list: () => fetch(`${BASE}/universo`, { headers: authHeaders() }).then(handle),
+  pendientes: () => fetch(`${BASE}/universo/pendientes`, { headers: authHeaders() }).then(handle),
   create: (d) => authPost('/universo', d),
+  crearOculto: (d) => authPost('/universo/oculto', d),
   update: (id, d) => authPatch(`/universo/${id}`, d),
   remove: (id) => authDelete(`/universo/${id}`),
+  convertir: (id) => authPost(`/universo/${id}/convertir`, {}),
+  importar: (registros) => authPost('/universo/importar', { registros }),
 }
 
-// --- Prospectos activos (reuniones) ---
+// --- Prospectos activos ---
 export const prospectoApi = {
   list: () => fetch(`${BASE}/prospectos`, { headers: authHeaders() }).then(handle),
   create: (d) => authPost('/prospectos', d),
   update: (id, d) => authPatch(`/prospectos/${id}`, d),
   remove: (id) => authDelete(`/prospectos/${id}`),
+  importar: (registros) => authPost('/prospectos/importar', { registros }),
+}
+
+// --- Reuniones de prospectos ---
+export const reunionApi = {
+  list: (prospectoId) => fetch(`${BASE}/prospectos/${prospectoId}/reuniones`, { headers: authHeaders() }).then(handle),
+  add: (prospectoId, d) => authPost(`/prospectos/${prospectoId}/reuniones`, d),
+  remove: (prospectoId, rid) => authDelete(`/prospectos/${prospectoId}/reuniones/${rid}`),
 }

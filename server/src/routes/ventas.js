@@ -11,11 +11,12 @@ const router = Router()
 
 const ver = [authMiddleware, requireFaculty('ventasVer')]
 const editar = [authMiddleware, requireFaculty('ventasModificar')]
+const eliminar = [authMiddleware, requireFaculty('ventasEliminar')]
 
 router.get('/', ...ver, listVentas)
 router.get('/:id', ...ver, getVenta)
 router.post('/', ...editar, createVenta)
 router.patch('/:id', ...editar, updateVenta)
-router.delete('/:id', ...editar, deleteVenta)
+router.delete('/:id', ...eliminar, deleteVenta)
 
 export default router

@@ -215,6 +215,14 @@ export default function Configuracion() {
                                   onChange={(e) => cambiarFacultad(u, 'ventasModificar', e.target.checked)}
                                 />{' '}Modificar
                               </label>
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={!!u.facultades?.ventasEliminar}
+                                  disabled={!editable || ocupadoId === u.id}
+                                  onChange={(e) => cambiarFacultad(u, 'ventasEliminar', e.target.checked)}
+                                />{' '}Eliminar
+                              </label>
                             </div>
                           </td>
                         )}

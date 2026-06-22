@@ -57,4 +57,9 @@ export const oportunidadesRepo = {
     const [r] = await pool.query('DELETE FROM oportunidades WHERE id=?', [id])
     return r.affectedRows > 0
   },
+  async createMany(rows) {
+    const resultados = []
+    for (const o of rows) resultados.push(await this.create(o))
+    return resultados
+  },
 }

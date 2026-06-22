@@ -28,7 +28,15 @@ function bind(reqst, o) {
 export const universoRepo = {
   async all() {
     const pool = await getPool()
-    return (await pool.request().query('SELECT * FROM universo ORDER BY createdAt DESC')).recordset
+    return (await pool.request().query(
+      "SELECT * FROM universo WHERE es_prospecto=0 AND etapa_pipeline != 'Prospecto' ORDER BY createdAt DESC"
+    )).recordset
+  },
+  async pendientes() {
+    const pool = await getPool()
+    return (await pool.request().query(
+      "SELECT * FROM universo WHERE etapa_pipeline='Prospecto' AND es_prospecto=0 ORDER BY createdAt DESC"
+    )).recordset
   },
   async find(id) {
     const pool = await getPool()
@@ -44,6 +52,16 @@ export const universoRepo = {
               VALUES (@id, ${CAMPOS.map((c) => '@' + c).join(', ')}, @createdAt)`)
     return row
   },
+  async crearOculto(o) {
+    const pool = await getPool()
+    const row = { ...o, id: randomUUID(), createdAt: new Date().toISOString() }
+    await bind(pool.request(), row)
+      .input('id', sql.NVarChar, row.id)
+      .input('createdAt', sql.NVarChar, row.createdAt)
+      .query(`INSERT INTO universo (id, ${CAMPOS.join(', ')}, es_prospecto, createdAt)
+              VALUES (@id, ${CAMPOS.map((c) => '@' + c).join(', ')}, 1, @createdAt)`)
+    return row
+  },
   async update(id, o) {
     const pool = await getPool()
     await bind(pool.request(), o)
@@ -55,6 +73,18 @@ export const universoRepo = {
     const pool = await getPool()
     const r = await pool.request().input('id', sql.NVarChar, id).query('DELETE FROM universo WHERE id=@id')
     return r.rowsAffected[0] > 0
+  },
+  async convertir(id) {
+    const pool = await getPool()
+    await pool.request().input('id', sql.NVarChar, id).query('UPDATE universo SET es_prospecto=1 WHERE id=@id')
+  },
+  async createMany(rows) {
+    const resultados = []
+    for (const o of rows) {
+      const row = await this.create(o)
+      resultados.push(row)
+    }
+    return resultados
   },
   async seedIfEmpty(data) {
     const pool = await getPool()

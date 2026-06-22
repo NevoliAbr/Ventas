@@ -29,10 +29,10 @@ export default function AuthPage() {
     <div className="auth-shell slds-scope">
       <div className="auth-card slds-box slds-theme_default">
         <h1 className="slds-text-heading_large slds-text-align_center slds-m-bottom_xx-small">
-          Ventas
+          Business Development
         </h1>
         <p className="slds-text-body_small slds-text-color_weak slds-text-align_center slds-m-bottom_medium">
-          Accede a tu panel de ventas
+          Accede a tu panel de Business Development
         </p>
 
         <div className="slds-tabs_default">
