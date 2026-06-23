@@ -55,8 +55,8 @@ VARIABLES DE ENTORNO EN PLESK (NO usar .env en producción)
   Plesk > Node.js > Environment Variables:
 
   DB_DRIVER        mysql
-  DB_USER          <usuario_mysql_plesk>
-  DB_PASSWORD      <contraseña_mysql_plesk>
+  DB_USER          sa
+  DB_PASSWORD      Base123
   DB_SERVER        localhost
   DB_PORT          3306
   DB_NAME          <nombre_bd_plesk>
@@ -65,8 +65,18 @@ VARIABLES DE ENTORNO EN PLESK (NO usar .env en producción)
   CLIENT_URL       https://tu-dominio.com
   NODE_ENV         production
 
+  — SMTP (requerido para envío de correos) —
+  SMTP_HOST        <servidor SMTP, ej: smtp.gmail.com o mail.tudominio.com>
+  SMTP_PORT        587  (TLS) ó 465 (SSL)
+  SMTP_SECURE      false  (para 587) ó true (para 465)
+  SMTP_USER        <usuario/email de la cuenta SMTP>
+  SMTP_PASS        <contraseña de la cuenta SMTP>
+  SMTP_FROM        <dirección "De", ej: noreply@tudominio.com>
+
   ⚠️  NO subir el archivo .env al repositorio.
   ⚠️  Cambiar JWT_SECRET por algo seguro y aleatorio.
+  ⚠️  Sin las variables SMTP, el "Olvidé mi contraseña" y el
+      envío de correos desde el admin fallarán con error 500.
 
 
 BASE DE DATOS — phpMyAdmin

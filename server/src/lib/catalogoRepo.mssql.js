@@ -11,23 +11,25 @@ export const unidades = {
     const pool = await getPool()
     return (await pool.request().query('SELECT * FROM unidades ORDER BY nombre')).recordset
   },
-  async create({ nombre, abreviatura = null }) {
+  async create({ nombre, abreviatura = null, servicio = null }) {
     const pool = await getPool()
-    const u = { id: randomUUID(), nombre, abreviatura }
+    const u = { id: randomUUID(), nombre, abreviatura, servicio }
     await pool.request()
       .input('id', sql.NVarChar, u.id)
       .input('nombre', sql.NVarChar, u.nombre)
       .input('abreviatura', sql.NVarChar, u.abreviatura)
-      .query('INSERT INTO unidades (id, nombre, abreviatura) VALUES (@id, @nombre, @abreviatura)')
+      .input('servicio', sql.NVarChar, u.servicio)
+      .query('INSERT INTO unidades (id, nombre, abreviatura, servicio) VALUES (@id, @nombre, @abreviatura, @servicio)')
     return u
   },
-  async update(id, { nombre, abreviatura }) {
+  async update(id, { nombre, abreviatura, servicio }) {
     const pool = await getPool()
     await pool.request()
       .input('id', sql.NVarChar, id)
       .input('nombre', sql.NVarChar, nombre)
       .input('abreviatura', sql.NVarChar, abreviatura ?? null)
-      .query('UPDATE unidades SET nombre=@nombre, abreviatura=@abreviatura WHERE id=@id')
+      .input('servicio', sql.NVarChar, servicio ?? null)
+      .query('UPDATE unidades SET nombre=@nombre, abreviatura=@abreviatura, servicio=@servicio WHERE id=@id')
     return first(await pool.request().input('id', sql.NVarChar, id).query('SELECT * FROM unidades WHERE id=@id'))
   },
   async remove(id) {

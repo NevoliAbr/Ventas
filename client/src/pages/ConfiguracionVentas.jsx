@@ -108,7 +108,7 @@ export default function ConfiguracionVentas() {
 
 /* ------------------------------ Unidades ------------------------------ */
 function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
-  const [form, setForm] = useState({ nombre: '', abreviatura: '' })
+  const [form, setForm] = useState({ nombre: '', abreviatura: '', servicio: CATALOGO_SERVICIOS[0] })
   const [editId, setEditId] = useState(null)
   const [editForm, setEditForm] = useState({})
 
@@ -117,7 +117,7 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
     try {
       const { unidad } = await catalogoApi.createUnidad(form)
       setUnidades((p) => [...p, unidad].sort((a, b) => a.nombre.localeCompare(b.nombre)))
-      setForm({ nombre: '', abreviatura: '' }); ok('Unidad creada.')
+      setForm({ nombre: '', abreviatura: '', servicio: CATALOGO_SERVICIOS[0] }); ok('Unidad creada.')
     } catch (e) { fail(e) }
   }
   async function guardar(id) {
@@ -135,6 +135,10 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
     <div className="slds-box slds-theme_default">
       {canEdit && (
         <form className="slds-grid slds-gutters slds-grid_vertical-align-end slds-m-bottom_medium" onSubmit={crear}>
+          <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Servicio</label>
+            <div className="slds-select_container"><select className="slds-select" value={form.servicio} onChange={(e) => setForm({ ...form, servicio: e.target.value })}>
+              {CATALOGO_SERVICIOS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select></div></div>
           <div className="slds-col"><label className="slds-form-element__label">Nombre</label>
             <input className="slds-input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Ej. Pieza" required /></div>
           <div className="slds-col"><label className="slds-form-element__label">Abreviatura</label>
@@ -143,13 +147,17 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
         </form>
       )}
       <table className="slds-table slds-table_bordered slds-table_cell-buffer">
-        <thead><tr className="slds-line-height_reset"><th>Nombre</th><th>Abreviatura</th>{canEdit && <th>Acciones</th>}</tr></thead>
+        <thead><tr className="slds-line-height_reset"><th>Servicio</th><th>Nombre</th><th>Abreviatura</th>{canEdit && <th>Acciones</th>}</tr></thead>
         <tbody>
-          {unidades.length === 0 && <tr><td colSpan={3} className="slds-text-color_weak">Sin unidades aún.</td></tr>}
+          {unidades.length === 0 && <tr><td colSpan={4} className="slds-text-color_weak">Sin unidades aún.</td></tr>}
           {unidades.map((u) => (
             <tr key={u.id}>
               {editId === u.id ? (
                 <>
+                  <td><div className="slds-select_container"><select className="slds-select" value={editForm.servicio || ''} onChange={(e) => setEditForm({ ...editForm, servicio: e.target.value })}>
+                    <option value="">—</option>
+                    {CATALOGO_SERVICIOS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select></div></td>
                   <td><input className="slds-input" value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} /></td>
                   <td><input className="slds-input" value={editForm.abreviatura || ''} onChange={(e) => setEditForm({ ...editForm, abreviatura: e.target.value })} /></td>
                   <td><button className="slds-button slds-button_brand" onClick={() => guardar(u.id)}>Guardar</button>{' '}
@@ -157,6 +165,7 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
                 </>
               ) : (
                 <>
+                  <td>{u.servicio ? <span className="role-badge role-admin">{u.servicio}</span> : '—'}</td>
                   <td>{u.nombre}</td><td>{u.abreviatura || '—'}</td>
                   {canEdit && <td>
                     <button className="slds-button slds-button_neutral" onClick={() => { setEditId(u.id); setEditForm(u) }}>Editar</button>{' '}
@@ -242,12 +251,17 @@ function ClientesTab({ clientes, setClientes, canEdit, ok, fail }) {
 }
 
 /* --------------------------- Productos + tipos --------------------------- */
-const CATALOGO_SERVICIOS = ['SITEM', 'SIBOP', 'SITAG', 'SGAPAS']
+const CATALOGO_SERVICIOS = ['SIAG', 'SITEM', 'SIBOP', 'SITAG']
 
 function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) {
   const VACIO = { nombre: CATALOGO_SERVICIOS[0], tipo: 'producto', sector: '', unidad_id: '' }
   const [form, setForm] = useState(VACIO)
+  const [filtros, setFiltros] = useState([])
   const unidadNombre = (id) => unidades.find((u) => u.id === id)?.nombre || '—'
+
+  function toggleFiltro(s) {
+    setFiltros((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s])
+  }
 
   async function crear(e) {
     e.preventDefault()
@@ -264,6 +278,10 @@ function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) 
   const setTipos = (prodId, fn) =>
     setProductos((prev) => prev.map((p) => (p.id === prodId ? { ...p, tipos_venta: fn(p.tipos_venta || []) } : p)))
 
+  const productosFiltrados = filtros.length === 0
+    ? productos
+    : productos.filter((p) => filtros.includes(p.nombre))
+
   return (
     <>
       {canEdit && (
@@ -271,7 +289,7 @@ function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) 
           <h2 className="slds-text-heading_small slds-m-bottom_small">Nuevo producto / servicio</h2>
           <form className="slds-grid slds-gutters slds-grid_vertical-align-end" onSubmit={crear}>
             <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Servicio</label>
-              <div className="slds-select_container"><select className="slds-select" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })}>
+              <div className="slds-select_container"><select className="slds-select" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value, unidad_id: '' })}>
                 {CATALOGO_SERVICIOS.map((s) => <option key={s} value={s}>{s}</option>)}
               </select></div></div>
             <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Sector</label>
@@ -281,14 +299,30 @@ function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) 
                 <option value="producto">Producto</option><option value="servicio">Servicio</option></select></div></div>
             <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Unidad</label>
               <div className="slds-select_container"><select className="slds-select" value={form.unidad_id} onChange={(e) => setForm({ ...form, unidad_id: e.target.value })}>
-                <option value="">—</option>{unidades.map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}</select></div></div>
+                <option value="">—</option>{unidades.filter((u) => u.servicio === form.nombre).map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}</select></div></div>
             <div className="slds-col slds-grow-none"><button className="slds-button slds-button_brand" type="submit">Agregar Servicio</button></div>
           </form>
         </div>
       )}
 
-      {productos.length === 0 && <p className="slds-text-color_weak">Sin productos aún.</p>}
-      {productos.map((p) => (
+      <div className="slds-grid slds-gutters slds-grid_vertical-align-center slds-m-bottom_small">
+        <span className="slds-col slds-grow-none slds-text-body_small slds-text-color_weak" style={{ color: '#fff' }}>Filtrar:</span>
+        {CATALOGO_SERVICIOS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => toggleFiltro(s)}
+            className={'slds-button ' + (filtros.includes(s) ? 'slds-button_brand' : 'slds-button_neutral')}
+            style={{ marginRight: 4 }}
+          >{s}</button>
+        ))}
+        {filtros.length > 0 && (
+          <button type="button" className="slds-button slds-button_neutral" style={{ marginLeft: 8, fontSize: 12 }} onClick={() => setFiltros([])}>Mostrar todos</button>
+        )}
+      </div>
+
+      {productosFiltrados.length === 0 && <p className="slds-text-color_weak" style={{ color: '#fff' }}>{filtros.length > 0 ? 'Sin productos para los servicios seleccionados.' : 'Sin productos aún.'}</p>}
+      {productosFiltrados.map((p) => (
         <div key={p.id} className="slds-box slds-theme_default slds-m-bottom_small">
           <div className="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_x-small">
             <div>

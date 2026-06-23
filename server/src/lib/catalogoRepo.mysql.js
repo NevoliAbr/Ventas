@@ -12,15 +12,15 @@ export const unidades = {
     const [rows] = await pool.query('SELECT * FROM unidades ORDER BY nombre')
     return rows
   },
-  async create({ nombre, abreviatura = null }) {
+  async create({ nombre, abreviatura = null, servicio = null }) {
     const pool = await getPool()
-    const u = { id: randomUUID(), nombre, abreviatura }
-    await pool.query('INSERT INTO unidades (id, nombre, abreviatura) VALUES (?, ?, ?)', [u.id, u.nombre, u.abreviatura])
+    const u = { id: randomUUID(), nombre, abreviatura, servicio }
+    await pool.query('INSERT INTO unidades (id, nombre, abreviatura, servicio) VALUES (?, ?, ?, ?)', [u.id, u.nombre, u.abreviatura, u.servicio])
     return u
   },
-  async update(id, { nombre, abreviatura }) {
+  async update(id, { nombre, abreviatura, servicio }) {
     const pool = await getPool()
-    await pool.query('UPDATE unidades SET nombre=?, abreviatura=? WHERE id=?', [nombre, abreviatura ?? null, id])
+    await pool.query('UPDATE unidades SET nombre=?, abreviatura=?, servicio=? WHERE id=?', [nombre, abreviatura ?? null, servicio ?? null, id])
     const [rows] = await pool.query('SELECT * FROM unidades WHERE id=?', [id])
     return first(rows)
   },

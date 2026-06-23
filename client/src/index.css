@@ -489,13 +489,13 @@ table.cot-table {
   background: transparent !important;
 }
 .slds-scope .slds-tabs_default__link {
-  color: var(--c-muted) !important;
+  color: #fff !important;
   font-size: 0.9rem !important;
   background: transparent !important;
 }
 .slds-scope .slds-tabs_default__item.slds-is-active .slds-tabs_default__link {
-  color: var(--c-accent) !important;
-  border-bottom-color: var(--c-accent) !important;
+  color: #fff !important;
+  border-bottom-color: #fff !important;
 }
 .slds-scope .slds-tabs_default__content {
   background: transparent !important;

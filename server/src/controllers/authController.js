@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken'
 import { randomBytes } from 'node:crypto'
 import { usersRepo } from '../lib/usersStore.js' // motor según DB_DRIVER (sqlite por defecto)
 import { effectiveRole, facultadesDe } from '../lib/permissions.js'
+import { transporter } from '../lib/mailer.js'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-cambia-esto-en-produccion'
 const JWT_EXPIRES = process.env.JWT_EXPIRES || '1h'
@@ -108,17 +109,27 @@ export async function forgotPassword(req, res) {
 
     const resetUrl = `${CLIENT_URL}/reset-password/${token}`
 
-    // SIMULACIÓN de envío de correo: el enlace se imprime en consola.
-    console.log('\n========== RECUPERACIÓN DE CONTRASEÑA (DEV) ==========')
-    console.log(`Para: ${user.email}`)
-    console.log(`Enlace (válido 1h):`)
-    console.log(resetUrl)
-    console.log('=====================================================\n')
+    await transporter.sendMail({
+      from:    process.env.SMTP_FROM,
+      to:      user.email,
+      subject: 'Recuperación de contraseña – Sistema de Ventas',
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto">
+          <h2 style="color:#1e3a5f">Recuperación de contraseña</h2>
+          <p>Hola <strong>${user.nombre}</strong>,</p>
+          <p>Recibimos una solicitud para restablecer tu contraseña. Haz clic en el botón para continuar:</p>
+          <p style="text-align:center;margin:32px 0">
+            <a href="${resetUrl}"
+               style="background:#1e3a5f;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:15px">
+              Restablecer contraseña
+            </a>
+          </p>
+          <p style="color:#666;font-size:13px">Este enlace es válido por 1 hora. Si no solicitaste este cambio, ignora este mensaje.</p>
+        </div>
+      `,
+    })
 
-    const body = { message: genericMsg }
-    // Comodidad para desarrollo: devolvemos también el enlace en la respuesta.
-    if (process.env.NODE_ENV !== 'production') body.devResetUrl = resetUrl
-    res.json(body)
+    res.json({ message: genericMsg })
   } catch (err) {
     console.error('[auth] forgotPassword error:', err)
     res.status(500).json({ error: `Error interno: ${err.message}` })

@@ -73,6 +73,13 @@ function authPost(path, body) {
     body: JSON.stringify(body),
   }).then(handle)
 }
+function authPostForm(path, formData) {
+  return fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: formData,
+  }).then(handle)
+}
 function authPatch(path, body) {
   return fetch(`${BASE}${path}`, {
     method: 'PATCH',
@@ -143,6 +150,21 @@ export const prospectoApi = {
   update: (id, d) => authPatch(`/prospectos/${id}`, d),
   remove: (id) => authDelete(`/prospectos/${id}`),
   importar: (registros) => authPost('/prospectos/importar', { registros }),
+}
+
+// --- Admin: correo ---
+export const adminApi = {
+  enviarCorreo: (d, files = []) => {
+    if (files.length > 0) {
+      const fd = new FormData()
+      fd.append('to', d.to)
+      fd.append('subject', d.subject)
+      fd.append('body', d.body)
+      files.forEach((f) => fd.append('attachments', f))
+      return authPostForm('/users/correo/enviar', fd)
+    }
+    return authPost('/users/correo/enviar', d)
+  },
 }
 
 // --- Reuniones de prospectos ---

@@ -98,6 +98,7 @@ async function ensureSchema(pool) {
       precio_piso  DECIMAL(18,2) NOT NULL CONSTRAINT DF_tv_piso  DEFAULT 0,
       precio_lista DECIMAL(18,2) NOT NULL CONSTRAINT DF_tv_lista DEFAULT 0
     )`)
+  await pool.request().query(`IF COL_LENGTH('unidades','servicio') IS NULL ALTER TABLE unidades ADD servicio NVARCHAR(20) NULL`)
   await pool.request().query(`IF COL_LENGTH('tipos_venta','segmento') IS NULL ALTER TABLE tipos_venta ADD segmento NVARCHAR(200) NULL`)
   // Migración de modelos anteriores -> rangos (piso/lista).
   for (const cons of ['DF_tv_min', 'DF_tv_cant', 'DF_tv_pmin', 'DF_tv_pmax']) {
