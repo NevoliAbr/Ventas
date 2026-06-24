@@ -373,7 +373,7 @@ export default function Cotizaciones() {
                           <td>{i.descripcion}</td>
                           <td className="num">{iMod ? '—' : Number(i.cantidad)}</td>
                           <td className="num">{money(i.precio_unitario)}</td>
-                          <td className="num">{iMod ? '—' : money(i.ingreso_mensual)}</td>
+                          <td className="num">{iMod ? `${Number(i.anios)} año${Number(i.anios) !== 1 ? 's' : ''}` : money(i.ingreso_mensual)}</td>
                           <td className="num">{iMod ? money(i.precio_unitario) : money(i.ingreso_anual)}</td>
                           <td></td>
                         </tr>
