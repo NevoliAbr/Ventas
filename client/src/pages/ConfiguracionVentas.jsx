@@ -85,7 +85,7 @@ export default function ConfiguracionVentas() {
               <li key={t} className={'slds-tabs_default__item' + (tab === t ? ' slds-is-active' : '')} role="presentation">
                 <a className="slds-tabs_default__link" href={'#' + t} role="tab"
                    onClick={(e) => { e.preventDefault(); setTab(t) }}>
-                  {t === 'productos' ? 'Productos / Servicios' : t === 'clientes' ? 'Clientes' : 'Tipos'}
+                  {t === 'productos' ? 'Productos / Servicios' : t === 'clientes' ? 'Clientes' : 'Unidades'}
                 </a>
               </li>
             ))}
