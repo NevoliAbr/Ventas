@@ -22,7 +22,7 @@ export default function ConfiguracionVentas() {
   const [aviso, setAviso] = useState(null)
 
   useEffect(() => {
-    if (!perms.facultades.ventasVer) {
+    if (!perms.facultades.configVentasVer) {
       setCargando(false)
       return
     }
@@ -34,14 +34,14 @@ export default function ConfiguracionVentas() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setCargando(false))
-  }, [perms.facultades.ventasVer])
+  }, [perms.facultades.configVentasVer])
 
   const ok = (msg) => { setError(null); setAviso(msg) }
   const fail = (e) => { setAviso(null); setError(e.message) }
 
   function salir() { logout(); navigate('/') }
 
-  if (!perms.facultades.ventasVer) {
+  if (!perms.facultades.configVentasVer) {
     return (
       <div className="dashboard slds-scope">
         <div className="slds-container_large slds-container_center">
@@ -54,7 +54,7 @@ export default function ConfiguracionVentas() {
           </div>
           <div className="slds-box slds-theme_default">
             <h2 className="slds-text-heading_small slds-m-bottom_x-small">Sin acceso</h2>
-            <p className="slds-text-color_weak">No tienes la facultad <b>ventasVer</b>. Pide a un administrador que te la asigne.</p>
+            <p className="slds-text-color_weak">No tienes la facultad <b>configVentasVer</b>. Pide a un administrador que te la asigne.</p>
             <p className="slds-m-top_small"><Link to="/inicio">← Volver al inicio</Link></p>
           </div>
         </div>
@@ -81,7 +81,7 @@ export default function ConfiguracionVentas() {
 
         <div className="slds-tabs_default slds-m-bottom_small">
           <ul className="slds-tabs_default__nav" role="tablist">
-            {['productos', 'clientes', 'unidades'].map((t) => (
+            {['productos', 'clientes', 'unidades'].filter((t) => t !== 'clientes' || perms.facultades.clientesVer).map((t) => (
               <li key={t} className={'slds-tabs_default__item' + (tab === t ? ' slds-is-active' : '')} role="presentation">
                 <a className="slds-tabs_default__link" href={'#' + t} role="tab"
                    onClick={(e) => { e.preventDefault(); setTab(t) }}>

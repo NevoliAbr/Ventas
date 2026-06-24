@@ -288,6 +288,9 @@ export default function Configuracion() {
                           <th scope="col"><div className="slds-truncate">Facultades (ventas)</div></th>
                         )}
                         {perms.canEditUsers && (
+                          <th scope="col"><div className="slds-truncate">Facultades (catálogo)</div></th>
+                        )}
+                        {perms.canEditUsers && (
                           <th scope="col"><div className="slds-truncate">Acciones</div></th>
                         )}
                       </tr>
@@ -350,6 +353,28 @@ export default function Configuracion() {
                                       disabled={!editable || ocupadoId === u.id}
                                       onChange={(e) => cambiarFacultad(u, 'ventasEliminar', e.target.checked)}
                                     />{' '}Eliminar
+                                  </label>
+                                </div>
+                              </td>
+                            )}
+                            {perms.canEditUsers && (
+                              <td>
+                                <div className="facultades-cell">
+                                  <label>
+                                    <input
+                                      type="checkbox"
+                                      checked={!!u.facultades?.configVentasVer}
+                                      disabled={!editable || ocupadoId === u.id}
+                                      onChange={(e) => cambiarFacultad(u, 'configVentasVer', e.target.checked)}
+                                    />{' '}Config. ventas
+                                  </label>
+                                  <label>
+                                    <input
+                                      type="checkbox"
+                                      checked={!!u.facultades?.clientesVer}
+                                      disabled={!editable || ocupadoId === u.id}
+                                      onChange={(e) => cambiarFacultad(u, 'clientesVer', e.target.checked)}
+                                    />{' '}Clientes
                                   </label>
                                 </div>
                               </td>
