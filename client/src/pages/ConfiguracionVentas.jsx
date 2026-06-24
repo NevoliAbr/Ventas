@@ -306,7 +306,7 @@ function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) 
                 <option value="Público">Público</option>
                 <option value="Privado">Privado</option>
               </select></div></div>
-            <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Unidad</label>
+            <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Tipo</label>
               <div className="slds-select_container"><select className="slds-select" value={form.unidad_id} onChange={(e) => setForm({ ...form, unidad_id: e.target.value })}>
                 <option value="">—</option>{unidades.filter((u) => u.servicio === form.nombre).map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}</select></div></div>
             <div className="slds-col slds-grow-none"><button className="slds-button slds-button_brand" type="submit">Agregar Servicio</button></div>
