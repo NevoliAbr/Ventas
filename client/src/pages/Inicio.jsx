@@ -21,14 +21,13 @@ export default function Inicio() {
       to: perms.facultades.ventasVer ? '/cotizaciones' : null,
       badge: perms.facultades.ventasVer ? null : 'Sin acceso',
     },
-    {
+    ...(perms.facultades.configVentasVer ? [{
       icono: '/ico/Configuración-de-Venta-2.ico',
       tint: '#e8f3ff',
       titulo: 'Configuración de ventas',
       desc: 'Productos, rangos, clientes y unidades',
-      to: perms.facultades.ventasVer ? '/configuracion-ventas' : null,
-      badge: perms.facultades.ventasVer ? null : 'Sin acceso',
-    },
+      to: '/configuracion-ventas',
+    }] : []),
     {
       icono: '/ico/Universo.ico',
       tint: '#f0f4ff',
