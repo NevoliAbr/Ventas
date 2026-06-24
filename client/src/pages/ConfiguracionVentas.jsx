@@ -85,7 +85,7 @@ export default function ConfiguracionVentas() {
               <li key={t} className={'slds-tabs_default__item' + (tab === t ? ' slds-is-active' : '')} role="presentation">
                 <a className="slds-tabs_default__link" href={'#' + t} role="tab"
                    onClick={(e) => { e.preventDefault(); setTab(t) }}>
-                  {t === 'productos' ? 'Productos / Servicios' : t === 'clientes' ? 'Clientes' : 'Unidades'}
+                  {t === 'productos' ? 'Productos / Servicios' : t === 'clientes' ? 'Clientes' : 'Tipos'}
                 </a>
               </li>
             ))}
@@ -117,18 +117,18 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
     try {
       const { unidad } = await catalogoApi.createUnidad(form)
       setUnidades((p) => [...p, unidad].sort((a, b) => a.nombre.localeCompare(b.nombre)))
-      setForm({ nombre: '', abreviatura: '', servicio: CATALOGO_SERVICIOS[0] }); ok('Unidad creada.')
+      setForm({ nombre: '', abreviatura: '', servicio: CATALOGO_SERVICIOS[0] }); ok('Tipo creado.')
     } catch (e) { fail(e) }
   }
   async function guardar(id) {
     try {
       const { unidad } = await catalogoApi.updateUnidad(id, editForm)
-      setUnidades((p) => p.map((u) => (u.id === id ? unidad : u))); setEditId(null); ok('Unidad actualizada.')
+      setUnidades((p) => p.map((u) => (u.id === id ? unidad : u))); setEditId(null); ok('Tipo actualizado.')
     } catch (e) { fail(e) }
   }
   async function eliminar(u) {
-    if (!window.confirm(`¿Eliminar la unidad "${u.nombre}"?`)) return
-    try { await catalogoApi.deleteUnidad(u.id); setUnidades((p) => p.filter((x) => x.id !== u.id)); ok('Unidad eliminada.') } catch (e) { fail(e) }
+    if (!window.confirm(`¿Eliminar el tipo "${u.nombre}"?`)) return
+    try { await catalogoApi.deleteUnidad(u.id); setUnidades((p) => p.filter((x) => x.id !== u.id)); ok('Tipo eliminado.') } catch (e) { fail(e) }
   }
 
   return (
@@ -153,7 +153,7 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
       <table className="slds-table slds-table_bordered slds-table_cell-buffer">
         <thead><tr className="slds-line-height_reset"><th>Servicio</th><th>Nombre</th><th>Tipo</th>{canEdit && <th>Acciones</th>}</tr></thead>
         <tbody>
-          {unidades.length === 0 && <tr><td colSpan={4} className="slds-text-color_weak">Sin unidades aún.</td></tr>}
+          {unidades.length === 0 && <tr><td colSpan={4} className="slds-text-color_weak">Sin tipos aún.</td></tr>}
           {unidades.map((u) => (
             <tr key={u.id}>
               {editId === u.id ? (
@@ -338,7 +338,7 @@ function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) 
               <span className="slds-text-heading_small">{p.nombre}</span>{' '}
               <span className={'role-badge role-' + (p.tipo === 'servicio' ? 'admin' : 'user')}>{p.tipo}</span>{' '}
               {p.sector && <span className="role-badge role-superuser">{p.sector}</span>}{' '}
-              <span className="slds-text-color_weak slds-text-body_small">unidad: {unidadNombre(p.unidad_id)}</span>
+              <span className="slds-text-color_weak slds-text-body_small">tipo: {unidadNombre(p.unidad_id)}</span>
             </div>
             {canEdit && <button className="slds-button slds-button_text-destructive" onClick={() => eliminar(p)}>Eliminar producto</button>}
           </div>

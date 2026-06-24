@@ -362,7 +362,7 @@ export default function Cotizaciones() {
                     <thead>
                       <tr>
                         <th>Concepto</th>
-                        {!todosModulo && <th className="num">Unidades</th>}
+                        {!todosModulo && <th className="num">Tipo</th>}
                         <th className="num">Ver total de contrato</th>
                         <th className="num">Duración de contrato</th>
                         <th className="num">Anual</th>
@@ -502,7 +502,7 @@ export default function Cotizaciones() {
                         </div>
                       </div>
                       <div className="slds-col slds-grow-none" style={{ minWidth: 160 }}>
-                        <label className="slds-form-element__label">Unidad</label>
+                        <label className="slds-form-element__label">Tipo</label>
                         <div className="slds-select_container">
                           <select className="slds-select" value={nl.productoId} disabled={!nl.servicio} onChange={(e) => cambiarProducto(e.target.value)}>
                             <option value="">— Elegir —</option>
@@ -512,7 +512,7 @@ export default function Cotizaciones() {
                       </div>
                       {!esModulo && (
                         <div className="slds-col slds-grow-none" style={{ maxWidth: 120 }}>
-                          <label className="slds-form-element__label">Unidades</label>
+                          <label className="slds-form-element__label">Cantidad</label>
                           <input className="slds-input" type="number" min="1" step="1" value={nl.cantidad} disabled={!productoSel} onChange={(e) => cambiarCantidad(e.target.value)} />
                         </div>
                       )}
