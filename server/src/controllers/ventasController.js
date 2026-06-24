@@ -56,9 +56,17 @@ async function construirLineas(items) {
       }
     }
 
-    const ingreso_mensual = round2(precio * cantidad)
-    const ingreso_anual = round2(ingreso_mensual * 12)
-    const subtotal = round2(ingreso_anual * anios) // total del contrato
+    const esModulo = mapaUnidades[prod.unidad_id]?.abreviatura === 'Módulo'
+    let ingreso_mensual, ingreso_anual, subtotal
+    if (esModulo) {
+      ingreso_anual = round2(precio)
+      ingreso_mensual = round2(precio / 12)
+      subtotal = round2(precio * anios)
+    } else {
+      ingreso_mensual = round2(precio * cantidad)
+      ingreso_anual = round2(ingreso_mensual * 12)
+      subtotal = round2(ingreso_anual * anios)
+    }
     total += subtotal
 
     lineas.push({

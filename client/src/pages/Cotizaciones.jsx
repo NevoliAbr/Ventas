@@ -366,27 +366,40 @@ export default function Cotizaciones() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(verCot.items || []).map((i) => (
-                      <tr key={i.id}>
-                        <td>{i.descripcion}</td>
-                        <td className="num">{Number(i.cantidad)}</td>
-                        <td className="num">{money(i.precio_unitario)}</td>
-                        <td className="num">{money(i.ingreso_mensual)}</td>
-                        <td className="num">{money(i.ingreso_anual)}</td>
-                        <td></td>
-                      </tr>
-                    ))}
+                    {(verCot.items || []).map((i) => {
+                      const iMod = lineaEsModulo(i)
+                      return (
+                        <tr key={i.id}>
+                          <td>{i.descripcion}</td>
+                          <td className="num">{iMod ? '—' : Number(i.cantidad)}</td>
+                          <td className="num">{money(i.precio_unitario)}</td>
+                          <td className="num">{iMod ? '—' : money(i.ingreso_mensual)}</td>
+                          <td className="num">{iMod ? money(i.precio_unitario) : money(i.ingreso_anual)}</td>
+                          <td></td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
 
                 {/* Total */}
+                {(() => {
+                  const docTotal = (verCot.items || []).reduce((sum, i) => {
+                    const sub = lineaEsModulo(i)
+                      ? Number(i.precio_unitario) * (Number(i.anios) || 1)
+                      : Number(i.subtotal)
+                    return sum + sub
+                  }, 0)
+                  return (
                 <div className="cot-total-bloque">
                   <div className="cot-total-row">
                     <span>TOTAL</span>
-                    <span>{money(verCot.total)}</span>
+                    <span>{money(docTotal)}</span>
                   </div>
                   <div className="cot-total-iva">*No incluye IVA</div>
                 </div>
+                  )
+                })()}
 
                 {/* Condiciones */}
                 <div className="cot-condiciones">
