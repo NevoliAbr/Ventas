@@ -124,6 +124,7 @@ export default function Cotizaciones() {
   const vendiblesPorServicio = useMemo(() => vendibles.filter((p) => p.nombre === nl.servicio), [vendibles, nl.servicio])
   const unidadObj = (id) => unidades.find((u) => u.id === id) || null
   const unidadNombre = (id) => unidadObj(id)?.nombre || null
+  const lineaEsModulo = (l) => unidadObj(productos.find((p) => p.id === l.producto_id)?.unidad_id)?.abreviatura === 'Módulo'
   const labelVariante = (p) => [p.sector, unidadNombre(p.unidad_id)].filter(Boolean).join(' · ') || p.id
   const productoSel = productos.find((p) => p.id === nl.productoId)
   const rangos = productoSel?.tipos_venta || []
@@ -526,23 +527,25 @@ export default function Cotizaciones() {
                   <table className="slds-table slds-table_bordered slds-table_cell-buffer slds-m-top_small">
                     <thead><tr className="slds-line-height_reset"><th>Concepto</th><th>Unid.</th><th>Precio</th><th>Años</th><th>Mensual</th><th>Anual</th><th>Estimado</th><th></th></tr></thead>
                     <tbody>
-                      {lineas.map((l, i) => (
+                      {lineas.map((l, i) => {
+                        const lMod = lineaEsModulo(l)
+                        return (
                         <tr key={i}>
                           <td>{l.descripcion}</td>
-                          <td>{l.es_modulo ? '—' : l.cantidad}</td>
-                          <td>{l.es_modulo ? `${money(l.precio_unitario)}/año` : `${money(l.precio_unitario)}/mes`}</td>
+                          <td>{lMod ? '—' : l.cantidad}</td>
+                          <td>{lMod ? `${money(l.precio_unitario)}/año` : `${money(l.precio_unitario)}/mes`}</td>
                           <td>{l.anios}</td>
-                          <td>{l.es_modulo ? '—' : money(l.ingreso_mensual)}</td>
+                          <td>{lMod ? '—' : money(l.ingreso_mensual)}</td>
                           <td>{money(l.ingreso_anual)}</td>
                           <td>{money(l.subtotal)}</td>
                           <td><button className="slds-button slds-button_text-destructive" onClick={() => quitarLinea(i)}>×</button></td>
                         </tr>
-                      ))}
+                      )})}
                     </tbody>
                     <tfoot>
                       <tr>
                         <td colSpan={4} style={{ textAlign: 'right', fontWeight: 600 }}>TOTALES</td>
-                        <td style={{ fontWeight: 600 }}>{lineas.every((l) => l.es_modulo) ? '—' : money(totalMensual)}</td>
+                        <td style={{ fontWeight: 600 }}>{lineas.every((l) => lineaEsModulo(l)) ? '—' : money(totalMensual)}</td>
                         <td style={{ fontWeight: 600 }}>{money(totalAnual)}</td>
                         <td style={{ fontWeight: 600 }}>{money(totalContrato)}</td>
                         <td></td>
