@@ -363,7 +363,7 @@ export default function Cotizaciones() {
                       <tr>
                         <th>Concepto</th>
                         {!todosModulo && <th className="num">Unidades</th>}
-                        <th className="num">Ver total de contrato</th>
+                        <th className="num">Precio unitario</th>
                         <th className="num">Duración de contrato</th>
                         <th className="num">Precio anual</th>
                         <th>Notas</th>
