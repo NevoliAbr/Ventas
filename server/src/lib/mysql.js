@@ -217,4 +217,5 @@ async function ensureSchema(pool) {
   await pool.query(`ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS proximo_paso VARCHAR(300) NULL`)
   await pool.query(`ALTER TABLE oportunidades ADD COLUMN IF NOT EXISTS fecha_sig_paso VARCHAR(40) NULL`)
   await pool.query(`ALTER TABLE unidades ADD COLUMN IF NOT EXISTS servicio VARCHAR(20) NULL`)
+  await pool.query(`ALTER TABLE unidades ADD COLUMN IF NOT EXISTS nombre_largo VARCHAR(200) NULL`)
 }

@@ -80,7 +80,7 @@ function TabUniverso({ datos, refExport }) {
           <KPI label="Pendientes → Prospectos" valor={pendientes.length} color="#7c3aed" sub="Etapa Prospecto sin confirmar" />
         </div>
         <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4 slds-p-vertical_x-small">
-          <KPI label="Con contacto registrado" valor={conContacto} color="#16a34a" sub={`${total ? Math.round(conContacto / total * 100) : 0}% del total`} />
+          <KPI label="Con Teléfono Registrado" valor={conContacto} color="#16a34a" sub={`${total ? Math.round(conContacto / total * 100) : 0}% del total`} />
         </div>
         <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4 slds-p-vertical_x-small">
           <KPI label="Con email" valor={conEmail} color="#0891b2" sub={`${total ? Math.round(conEmail / total * 100) : 0}% del total`} />

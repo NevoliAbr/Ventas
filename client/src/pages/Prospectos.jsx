@@ -5,19 +5,16 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { permissionsFor } from '../lib/permissions.js'
 import { prospectoApi, reunionApi, universoApi } from '../services/api.js'
 
-const COLS_EXPORT = ['Empresa / Municipio', 'Tipo', 'Contacto principal', 'Teléfono', 'Responsable LCG', '¿Pidió cotización?', '¿Pasó a Forecast?']
+const COLS_EXPORT = ['Empresa / Municipio', 'Tipo', 'Contacto principal', 'Teléfono', 'Responsable LCG']
 const MAP_IMPORT = {
   'empresa / municipio': 'empresa', 'tipo': 'tipo', 'contacto principal': 'contacto_nombre',
   'teléfono': 'telefono', 'responsable lcg': 'responsable',
-  '¿pidió cotización?': 'pide_cotizacion', '¿pasó a forecast?': 'pasa_forecast',
 }
 
 function exportarExcel(lista) {
   const filas = lista.map((r) => ({
     'Empresa / Municipio': r.empresa, 'Tipo': r.tipo || '', 'Contacto principal': r.contacto_nombre || '',
     'Teléfono': r.telefono || '', 'Responsable LCG': r.responsable || '',
-    '¿Pidió cotización?': (r.pide_cotizacion || r.pide_cotizacion === 1) ? 'Sí' : 'No',
-    '¿Pasó a Forecast?': (r.pasa_forecast || r.pasa_forecast === 1) ? 'Sí' : 'No',
   }))
   const ws = XLSX.utils.json_to_sheet(filas)
   ws['!cols'] = COLS_EXPORT.map((c) => ({ wch: Math.max(c.length + 4, 18) }))
@@ -31,7 +28,7 @@ const STATUS_COLOR = {
 }
 const STATUS_REUNION = ['Agendada', 'Realizada', 'Reprogramada', 'Cancelada']
 
-const VACIO = { empresa: '', tipo: '', contacto_nombre: '', telefono: '', responsable: '', pide_cotizacion: false, pasa_forecast: false }
+const VACIO = { empresa: '', tipo: '', contacto_nombre: '', telefono: '', responsable: '' }
 const REUNION_VACIA = { fecha: '', status: '', observaciones: '' }
 
 export default function Prospectos() {
@@ -119,7 +116,7 @@ export default function Prospectos() {
 
   function editar(r) {
     setEditId(r.id)
-    setForm({ empresa: r.empresa, tipo: r.tipo || '', contacto_nombre: r.contacto_nombre || '', telefono: r.telefono || '', responsable: r.responsable || '', pide_cotizacion: !!(r.pide_cotizacion || r.pide_cotizacion === 1), pasa_forecast: !!(r.pasa_forecast || r.pasa_forecast === 1) })
+    setForm({ empresa: r.empresa, tipo: r.tipo || '', contacto_nombre: r.contacto_nombre || '', telefono: r.telefono || '', responsable: r.responsable || '' })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -175,8 +172,7 @@ export default function Prospectos() {
         for (const [col, val] of Object.entries(fila)) {
           const campo = MAP_IMPORT[col.trim().toLowerCase()]
           if (!campo) continue
-          if (campo === 'pide_cotizacion' || campo === 'pasa_forecast') reg[campo] = /^s[ií]/i.test(String(val))
-          else reg[campo] = val instanceof Date ? val.toISOString().slice(0, 10) : String(val ?? '').trim()
+          reg[campo] = val instanceof Date ? val.toISOString().slice(0, 10) : String(val ?? '').trim()
         }
         return reg
       }).filter((r) => r.empresa)
@@ -196,9 +192,7 @@ export default function Prospectos() {
     )
   }
 
-  const enProceso = lista.filter((r) => !r.pasa_forecast)
-  const pasaron = lista.filter((r) => r.pasa_forecast)
-  const colSpanTotal = (canEdit || canDelete) ? 8 : 7
+  const colSpanTotal = (canEdit || canDelete) ? 6 : 5
 
   return (
     <div className="dashboard slds-scope">
@@ -278,13 +272,7 @@ export default function Prospectos() {
         {/* Métricas */}
         <div className="slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
           <div className="slds-col slds-size_1-of-3 slds-p-vertical_x-small">
-            <div className="metric-card"><p className="metric-label">En proceso</p><p className="metric-value">{enProceso.length}</p></div>
-          </div>
-          <div className="slds-col slds-size_1-of-3 slds-p-vertical_x-small">
-            <div className="metric-card"><p className="metric-label">Piden cotización</p><p className="metric-value">{lista.filter((r) => r.pide_cotizacion || r.pide_cotizacion === 1).length}</p></div>
-          </div>
-          <div className="slds-col slds-size_1-of-3 slds-p-vertical_x-small">
-            <div className="metric-card"><p className="metric-label">Pasaron a Forecast</p><p className="metric-value">{pasaron.length}</p></div>
+            <div className="metric-card"><p className="metric-label">En proceso</p><p className="metric-value">{lista.length}</p></div>
           </div>
         </div>
 
@@ -349,15 +337,7 @@ export default function Prospectos() {
                 </div>
               </div>
               <div className="slds-grid slds-gutters slds-m-top_small slds-grid_vertical-align-center">
-                <label className="slds-checkbox slds-m-right_medium" style={{ cursor: 'pointer' }}>
-                  <input type="checkbox" checked={form.pide_cotizacion} onChange={(e) => f({ pide_cotizacion: e.target.checked })} />
-                  <span className="slds-m-left_x-small">¿Pidió cotización?</span>
-                </label>
-                <label className="slds-checkbox" style={{ cursor: 'pointer' }}>
-                  <input type="checkbox" checked={form.pasa_forecast} onChange={(e) => f({ pasa_forecast: e.target.checked })} />
-                  <span className="slds-m-left_x-small">¿Pasó a Forecast?</span>
-                </label>
-                <div className="slds-m-left_medium">
+                <div>
                   <button className="slds-button slds-button_brand" type="submit">{editId ? 'Guardar' : 'Agregar'}</button>
                 </div>
               </div>
@@ -390,7 +370,7 @@ export default function Prospectos() {
                 <thead>
                   <tr className="slds-line-height_reset">
                     <th>Empresa</th><th>Tipo</th><th>Contacto</th><th>Responsable</th>
-                    <th>Reuniones</th><th>Cotización</th><th>Forecast</th>
+                    <th>Reuniones</th>
                     {(canEdit || canDelete) && <th>Acciones</th>}
                   </tr>
                 </thead>
@@ -407,11 +387,9 @@ export default function Prospectos() {
                             className="slds-button slds-button_neutral"
                             style={{ fontSize: '0.8rem', padding: '3px 10px' }}
                             onClick={() => toggleReuniones(r.id)}>
-                            {Number(r.num_reuniones || 0)} reunión{Number(r.num_reuniones || 0) !== 1 ? 'es' : ''} {expandedId === r.id ? '▲' : '▼'}
+                            {Number(r.num_reuniones || 0)} {Number(r.num_reuniones || 0) === 1 ? 'reunión' : 'reuniones'} {expandedId === r.id ? '▲' : '▼'}
                           </button>
                         </td>
-                        <td style={{ textAlign: 'center' }}>{(r.pide_cotizacion || r.pide_cotizacion === 1) ? '✅' : '—'}</td>
-                        <td style={{ textAlign: 'center' }}>{(r.pasa_forecast || r.pasa_forecast === 1) ? '✅' : '—'}</td>
                         {(canEdit || canDelete) && (
                           <td>
                             {canEdit && <><button className="slds-button slds-button_neutral" onClick={() => editar(r)}>Editar</button>{' '}</>}

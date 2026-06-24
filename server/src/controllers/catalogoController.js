@@ -8,14 +8,14 @@ export async function listUnidades(req, res) {
   res.json({ unidades: await unidades.all() })
 }
 export async function createUnidad(req, res) {
-  const { nombre, abreviatura, servicio } = req.body ?? {}
+  const { nombre, nombre_largo, abreviatura, servicio } = req.body ?? {}
   if (!nombre?.trim()) return res.status(400).json({ error: 'El nombre es obligatorio.' })
-  res.status(201).json({ unidad: await unidades.create({ nombre: nombre.trim(), abreviatura: abreviatura?.trim() || null, servicio: servicio?.trim() || null }) })
+  res.status(201).json({ unidad: await unidades.create({ nombre: nombre.trim(), nombre_largo: nombre_largo?.trim() || null, abreviatura: abreviatura?.trim() || null, servicio: servicio?.trim() || null }) })
 }
 export async function updateUnidad(req, res) {
-  const { nombre, abreviatura, servicio } = req.body ?? {}
+  const { nombre, nombre_largo, abreviatura, servicio } = req.body ?? {}
   if (!nombre?.trim()) return res.status(400).json({ error: 'El nombre es obligatorio.' })
-  const u = await unidades.update(req.params.id, { nombre: nombre.trim(), abreviatura: abreviatura?.trim() || null, servicio: servicio?.trim() || null })
+  const u = await unidades.update(req.params.id, { nombre: nombre.trim(), nombre_largo: nombre_largo?.trim() || null, abreviatura: abreviatura?.trim() || null, servicio: servicio?.trim() || null })
   if (!u) return res.status(404).json({ error: 'Unidad no encontrada.' })
   res.json({ unidad: u })
 }

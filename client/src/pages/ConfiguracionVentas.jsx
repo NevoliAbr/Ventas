@@ -108,7 +108,7 @@ export default function ConfiguracionVentas() {
 
 /* ------------------------------ Unidades ------------------------------ */
 function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
-  const [form, setForm] = useState({ nombre: '', abreviatura: '', servicio: CATALOGO_SERVICIOS[0] })
+  const [form, setForm] = useState({ nombre: '', nombre_largo: '', abreviatura: '', servicio: CATALOGO_SERVICIOS[0] })
   const [editId, setEditId] = useState(null)
   const [editForm, setEditForm] = useState({})
 
@@ -117,7 +117,7 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
     try {
       const { unidad } = await catalogoApi.createUnidad(form)
       setUnidades((p) => [...p, unidad].sort((a, b) => a.nombre.localeCompare(b.nombre)))
-      setForm({ nombre: '', abreviatura: '', servicio: CATALOGO_SERVICIOS[0] }); ok('Tipo creado.')
+      setForm({ nombre: '', nombre_largo: '', abreviatura: '', servicio: CATALOGO_SERVICIOS[0] }); ok('Tipo creado.')
     } catch (e) { fail(e) }
   }
   async function guardar(id) {
@@ -139,21 +139,24 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
             <div className="slds-select_container"><select className="slds-select" value={form.servicio} onChange={(e) => setForm({ ...form, servicio: e.target.value })}>
               {CATALOGO_SERVICIOS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select></div></div>
-          <div className="slds-col"><label className="slds-form-element__label">Nombre</label>
-            <input className="slds-input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Ej. Pieza" required /></div>
+          <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Nombre corto</label>
+            <input className="slds-input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Ej. Caja" required /></div>
+          <div className="slds-col"><label className="slds-form-element__label">Nombre largo</label>
+            <input className="slds-input" value={form.nombre_largo} onChange={(e) => setForm({ ...form, nombre_largo: e.target.value })} placeholder="Ej. Módulo de Caja Registradora" /></div>
           <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Tipo</label>
             <div className="slds-select_container"><select className="slds-select" value={form.abreviatura} onChange={(e) => setForm({ ...form, abreviatura: e.target.value })}>
               <option value="">— Elegir —</option>
               <option value="Módulo">Módulo</option>
               <option value="Unidades">Unidades</option>
+              <option value="Único">Único</option>
             </select></div></div>
           <div className="slds-col slds-grow-none"><button className="slds-button slds-button_brand" type="submit">Agregar</button></div>
         </form>
       )}
       <table className="slds-table slds-table_bordered slds-table_cell-buffer">
-        <thead><tr className="slds-line-height_reset"><th>Servicio</th><th>Nombre</th><th>Tipo</th>{canEdit && <th>Acciones</th>}</tr></thead>
+        <thead><tr className="slds-line-height_reset"><th>Servicio</th><th>Nombre corto</th><th>Nombre largo</th><th>Tipo</th>{canEdit && <th>Acciones</th>}</tr></thead>
         <tbody>
-          {unidades.length === 0 && <tr><td colSpan={4} className="slds-text-color_weak">Sin tipos aún.</td></tr>}
+          {unidades.length === 0 && <tr><td colSpan={5} className="slds-text-color_weak">Sin tipos aún.</td></tr>}
           {unidades.map((u) => (
             <tr key={u.id}>
               {editId === u.id ? (
@@ -162,11 +165,13 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
                     <option value="">—</option>
                     {CATALOGO_SERVICIOS.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select></div></td>
-                  <td><input className="slds-input" value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} /></td>
+                  <td><input className="slds-input" value={editForm.nombre || ''} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} /></td>
+                  <td><input className="slds-input" value={editForm.nombre_largo || ''} onChange={(e) => setEditForm({ ...editForm, nombre_largo: e.target.value })} /></td>
                   <td><div className="slds-select_container"><select className="slds-select" value={editForm.abreviatura || ''} onChange={(e) => setEditForm({ ...editForm, abreviatura: e.target.value })}>
                     <option value="">— Elegir —</option>
                     <option value="Módulo">Módulo</option>
                     <option value="Unidades">Unidades</option>
+                    <option value="Único">Único</option>
                   </select></div></td>
                   <td><button className="slds-button slds-button_brand" onClick={() => guardar(u.id)}>Guardar</button>{' '}
                       <button className="slds-button slds-button_neutral" onClick={() => setEditId(null)}>Cancelar</button></td>
@@ -174,7 +179,7 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
               ) : (
                 <>
                   <td>{u.servicio ? <span className="role-badge role-admin">{u.servicio}</span> : '—'}</td>
-                  <td>{u.nombre}</td><td>{u.abreviatura || '—'}</td>
+                  <td>{u.nombre}</td><td>{u.nombre_largo || '—'}</td><td>{u.abreviatura || '—'}</td>
                   {canEdit && <td>
                     <button className="slds-button slds-button_neutral" onClick={() => { setEditId(u.id); setEditForm(u) }}>Editar</button>{' '}
                     <button className="slds-button slds-button_text-destructive" onClick={() => eliminar(u)}>Eliminar</button>
