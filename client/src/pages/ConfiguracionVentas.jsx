@@ -259,7 +259,7 @@ function ClientesTab({ clientes, setClientes, canEdit, ok, fail }) {
 }
 
 /* --------------------------- Productos + tipos --------------------------- */
-const CATALOGO_SERVICIOS = ['SIAG', 'SITEM', 'SIBOP', 'SITAG']
+const CATALOGO_SERVICIOS = ['SIAG', 'SITEM', 'SIBOP']
 
 function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) {
   const VACIO = { nombre: CATALOGO_SERVICIOS[0], tipo: 'producto', sector: '', unidad_id: '' }
