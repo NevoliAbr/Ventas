@@ -12,7 +12,7 @@ import { catalogoApi, oportunidadesApi, prospectoApi, universoApi, ventasApi } f
 const hoy = () => new Date().toISOString().slice(0, 10)
 const money = (n) => '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const ANIOS = [1, 2, 3, 4, 5, 6]
-const LINEA_VACIA = { productoId: '', cantidad: '', anios: '1', precio: '' }
+const LINEA_VACIA = { servicio: '', productoId: '', cantidad: '', anios: '1', precio: '' }
 
 const rangoPara = (rangos, cantidad) =>
   rangos.find((r) => cantidad >= r.unidades_min && (r.unidades_max == null || cantidad <= r.unidades_max))
@@ -32,6 +32,7 @@ export default function Cotizaciones() {
   const canDelete = perms.facultades.ventasEliminar
 
   const [productos, setProductos] = useState([])
+  const [unidades, setUnidades] = useState([])
   const [cotizaciones, setCotizaciones] = useState([])
   // Datos de cada fuente
   const [listaUniverso, setListaUniverso] = useState([])
@@ -64,13 +65,15 @@ export default function Cotizaciones() {
     if (!perms.facultades.ventasVer) { setCargando(false); return }
     Promise.all([
       catalogoApi.listProductos(),
+      catalogoApi.listUnidades(),
       ventasApi.list(),
       universoApi.list().catch(() => ({ universo: [] })),
       prospectoApi.list().catch(() => ({ prospectos: [] })),
       oportunidadesApi.list().catch(() => ({ oportunidades: [] })),
     ])
-      .then(([p, v, u, pr, op]) => {
+      .then(([p, un, v, u, pr, op]) => {
         setProductos(p.productos)
+        setUnidades(un.unidades || [])
         setCotizaciones(v.ventas)
         setListaUniverso(u.universo || [])
         setListaProspectos(pr.prospectos || [])
@@ -117,16 +120,36 @@ export default function Cotizaciones() {
   }, [verCot, listaUniverso, listaProspectos, listaPipeline])
 
   const vendibles = useMemo(() => productos.filter((p) => (p.tipos_venta || []).length > 0), [productos])
+  const serviciosUnicos = useMemo(() => [...new Set(vendibles.map((p) => p.nombre))].sort(), [vendibles])
+  const vendiblesPorServicio = useMemo(() => vendibles.filter((p) => p.nombre === nl.servicio), [vendibles, nl.servicio])
+  const unidadObj = (id) => unidades.find((u) => u.id === id) || null
+  const unidadNombre = (id) => unidadObj(id)?.nombre || null
+  const labelVariante = (p) => [p.sector, unidadNombre(p.unidad_id)].filter(Boolean).join(' · ') || p.id
   const productoSel = productos.find((p) => p.id === nl.productoId)
   const rangos = productoSel?.tipos_venta || []
+  const tipoUnidad = unidadObj(productoSel?.unidad_id)?.abreviatura || null
+  const esModulo = tipoUnidad === 'Módulo'
   const cantNum = Number(nl.cantidad)
-  const rangoSel = Number.isInteger(cantNum) && cantNum > 0 ? rangoPara(rangos, cantNum) : null
+  const rangoSel = esModulo
+    ? rangoPara(rangos, 1)
+    : (Number.isInteger(cantNum) && cantNum > 0 ? rangoPara(rangos, cantNum) : null)
 
   const totalMensual = useMemo(() => lineas.reduce((s, l) => s + l.ingreso_mensual, 0), [lineas])
   const totalAnual = useMemo(() => lineas.reduce((s, l) => s + l.ingreso_anual, 0), [lineas])
   const totalContrato = useMemo(() => lineas.reduce((s, l) => s + l.subtotal, 0), [lineas])
 
-  function cambiarProducto(id) { setNl({ ...LINEA_VACIA, productoId: id }); setErrLinea(null) }
+  function cambiarServicio(nombre) { setNl({ ...LINEA_VACIA, servicio: nombre }); setErrLinea(null) }
+  function cambiarProducto(id) {
+    const prod = productos.find((p) => p.id === id)
+    const tipo = unidadObj(prod?.unidad_id)?.abreviatura || null
+    if (tipo === 'Módulo') {
+      const rango = rangoPara(prod?.tipos_venta || [], 1)
+      setNl((s) => ({ ...s, productoId: id, cantidad: '1', precio: rango ? String(rango.precio_lista) : '' }))
+    } else {
+      setNl((s) => ({ ...s, productoId: id, cantidad: '', precio: '' }))
+    }
+    setErrLinea(null)
+  }
   function cambiarCantidad(v) {
     const c = Number(v)
     const r = Number.isInteger(c) && c > 0 ? rangoPara(rangos, c) : null
@@ -137,24 +160,40 @@ export default function Cotizaciones() {
   function agregarLinea() {
     setErrLinea(null)
     if (!productoSel) return setErrLinea('Elige un producto.')
-    const cantidad = Number(nl.cantidad)
-    if (!Number.isInteger(cantidad) || cantidad <= 0) return setErrLinea('Las unidades deben ser un entero mayor a 0.')
-    const rango = rangoPara(rangos, cantidad)
-    if (!rango) return setErrLinea(`No hay un rango configurado para ${cantidad} unidades.`)
     const anios = Number(nl.anios)
     if (!Number.isInteger(anios) || anios < 1 || anios > 6) return setErrLinea('Los años deben estar entre 1 y 6.')
     const precio = Number(nl.precio)
-    if (!Number.isFinite(precio) || precio < rango.precio_piso || precio > rango.precio_lista) {
-      return setErrLinea(`El precio debe estar entre ${money(rango.precio_piso)} (piso) y ${money(rango.precio_lista)} (lista).`)
+
+    if (esModulo) {
+      const rango = rangoPara(rangos, 1)
+      if (!rango) return setErrLinea('No hay rango configurado para este módulo.')
+      if (!Number.isFinite(precio) || precio < rango.precio_piso || precio > rango.precio_lista) {
+        return setErrLinea(`El precio debe estar entre ${money(rango.precio_piso)} (piso) y ${money(rango.precio_lista)} (lista).`)
+      }
+      const ingreso_anual = Math.round(precio * 100) / 100
+      const ingreso_mensual = Math.round(precio / 12 * 100) / 100
+      const subtotal = Math.round(ingreso_anual * anios * 100) / 100
+      setLineas((p) => [...p, {
+        producto_id: productoSel.id, descripcion: `${productoSel.nombre} — ${rango.nombre}`,
+        cantidad: 1, anios, precio_unitario: precio, ingreso_mensual, ingreso_anual, subtotal, es_modulo: true,
+      }])
+    } else {
+      const cantidad = Number(nl.cantidad)
+      if (!Number.isInteger(cantidad) || cantidad <= 0) return setErrLinea('Las unidades deben ser un entero mayor a 0.')
+      const rango = rangoPara(rangos, cantidad)
+      if (!rango) return setErrLinea(`No hay un rango configurado para ${cantidad} unidades.`)
+      if (!Number.isFinite(precio) || precio < rango.precio_piso || precio > rango.precio_lista) {
+        return setErrLinea(`El precio debe estar entre ${money(rango.precio_piso)} (piso) y ${money(rango.precio_lista)} (lista).`)
+      }
+      const ingreso_mensual = Math.round(precio * cantidad * 100) / 100
+      const ingreso_anual = Math.round(ingreso_mensual * 12 * 100) / 100
+      const subtotal = Math.round(ingreso_anual * anios * 100) / 100
+      setLineas((p) => [...p, {
+        producto_id: productoSel.id, descripcion: `${productoSel.nombre} — ${rango.nombre}`,
+        cantidad, anios, precio_unitario: precio, ingreso_mensual, ingreso_anual, subtotal, es_modulo: false,
+      }])
     }
-    const ingreso_mensual = Math.round(precio * cantidad * 100) / 100
-    const ingreso_anual = Math.round(ingreso_mensual * 12 * 100) / 100
-    const subtotal = Math.round(ingreso_anual * anios * 100) / 100
-    setLineas((p) => [...p, {
-      producto_id: productoSel.id, descripcion: `${productoSel.nombre} — ${rango.nombre}`,
-      cantidad, anios, precio_unitario: precio, ingreso_mensual, ingreso_anual, subtotal,
-    }])
-    setNl(LINEA_VACIA)
+    setNl((s) => ({ ...LINEA_VACIA, servicio: s.servicio }))
   }
 
   const quitarLinea = (i) => setLineas((p) => p.filter((_, idx) => idx !== i))
@@ -433,19 +472,30 @@ export default function Cotizaciones() {
                 ) : (
                   <div className="slds-box" style={{ background: '#fafafc', borderRadius: 12 }}>
                     <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end">
-                      <div className="slds-col slds-size_1-of-3">
-                        <label className="slds-form-element__label">Producto (con servicio)</label>
+                      <div className="slds-col slds-grow-none" style={{ minWidth: 140 }}>
+                        <label className="slds-form-element__label">Servicio</label>
                         <div className="slds-select_container">
-                          <select className="slds-select" value={nl.productoId} onChange={(e) => cambiarProducto(e.target.value)}>
+                          <select className="slds-select" value={nl.servicio} onChange={(e) => cambiarServicio(e.target.value)}>
                             <option value="">— Elegir —</option>
-                            {vendibles.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                            {serviciosUnicos.map((s) => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </div>
                       </div>
-                      <div className="slds-col slds-grow-none" style={{ maxWidth: 120 }}>
-                        <label className="slds-form-element__label">Unidades</label>
-                        <input className="slds-input" type="number" min="1" step="1" value={nl.cantidad} disabled={!productoSel} onChange={(e) => cambiarCantidad(e.target.value)} />
+                      <div className="slds-col slds-grow-none" style={{ minWidth: 160 }}>
+                        <label className="slds-form-element__label">Unidad</label>
+                        <div className="slds-select_container">
+                          <select className="slds-select" value={nl.productoId} disabled={!nl.servicio} onChange={(e) => cambiarProducto(e.target.value)}>
+                            <option value="">— Elegir —</option>
+                            {vendiblesPorServicio.map((p) => <option key={p.id} value={p.id}>{labelVariante(p)}</option>)}
+                          </select>
+                        </div>
                       </div>
+                      {!esModulo && (
+                        <div className="slds-col slds-grow-none" style={{ maxWidth: 120 }}>
+                          <label className="slds-form-element__label">Unidades</label>
+                          <input className="slds-input" type="number" min="1" step="1" value={nl.cantidad} disabled={!productoSel} onChange={(e) => cambiarCantidad(e.target.value)} />
+                        </div>
+                      )}
                       <div className="slds-col slds-grow-none" style={{ maxWidth: 90 }}>
                         <label className="slds-form-element__label">Años</label>
                         <div className="slds-select_container">
@@ -455,17 +505,17 @@ export default function Cotizaciones() {
                         </div>
                       </div>
                       <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}>
-                        <label className="slds-form-element__label">Precio unit./mes</label>
+                        <label className="slds-form-element__label">{esModulo ? 'Precio/año' : 'Precio unit./mes'}</label>
                         <input className="slds-input" type="number" min="0" step="0.01" value={nl.precio} disabled={!rangoSel} onChange={(e) => setNl({ ...nl, precio: e.target.value })} />
                       </div>
                       <div className="slds-col slds-grow-none">
-                        <button type="button" className="slds-button slds-button_brand" onClick={agregarLinea} disabled={!rangoSel}>Agregar línea</button>
+                        <button type="button" className="slds-button slds-button_brand" onClick={agregarLinea} disabled={!rangoSel || !nl.precio}>Agregar línea</button>
                       </div>
                     </div>
-                    {nl.cantidad && !rangoSel && <p className="slds-text-color_error slds-text-body_small slds-m-top_x-small">⚠️ No hay rango para {nl.cantidad} unidades.</p>}
+                    {!esModulo && nl.cantidad && !rangoSel && <p className="slds-text-color_error slds-text-body_small slds-m-top_x-small">⚠️ No hay rango para {nl.cantidad} unidades.</p>}
                     {rangoSel && (
                       <p className="slds-text-body_small slds-text-color_weak slds-m-top_x-small">
-                        Rango: <b>{rangoSel.nombre}</b> · banda: piso {money(rangoSel.precio_piso)} – lista {money(rangoSel.precio_lista)} · Mensual = precio × {nl.cantidad}; Anual = ×12; Total = anual × años
+                        Rango: <b>{rangoSel.nombre}</b> · banda: piso {money(rangoSel.precio_piso)} – lista {money(rangoSel.precio_lista)}{esModulo ? ' · Total = precio/año × años' : ` · Mensual = precio × ${nl.cantidad}; Anual = ×12; Total = anual × años`}
                       </p>
                     )}
                     {errLinea && <p className="slds-text-color_error slds-text-body_small slds-m-top_x-small">⚠️ {errLinea}</p>}
@@ -474,12 +524,17 @@ export default function Cotizaciones() {
 
                 {lineas.length > 0 && (
                   <table className="slds-table slds-table_bordered slds-table_cell-buffer slds-m-top_small">
-                    <thead><tr className="slds-line-height_reset"><th>Concepto</th><th>Unid.</th><th>$/mes</th><th>Años</th><th>Mensual</th><th>Anual</th><th>Estimado</th><th></th></tr></thead>
+                    <thead><tr className="slds-line-height_reset"><th>Concepto</th><th>Unid.</th><th>Precio</th><th>Años</th><th>Mensual</th><th>Anual</th><th>Estimado</th><th></th></tr></thead>
                     <tbody>
                       {lineas.map((l, i) => (
                         <tr key={i}>
-                          <td>{l.descripcion}</td><td>{l.cantidad}</td><td>{money(l.precio_unitario)}</td><td>{l.anios}</td>
-                          <td>{money(l.ingreso_mensual)}</td><td>{money(l.ingreso_anual)}</td><td>{money(l.subtotal)}</td>
+                          <td>{l.descripcion}</td>
+                          <td>{l.es_modulo ? '—' : l.cantidad}</td>
+                          <td>{l.es_modulo ? `${money(l.precio_unitario)}/año` : `${money(l.precio_unitario)}/mes`}</td>
+                          <td>{l.anios}</td>
+                          <td>{l.es_modulo ? '—' : money(l.ingreso_mensual)}</td>
+                          <td>{money(l.ingreso_anual)}</td>
+                          <td>{money(l.subtotal)}</td>
                           <td><button className="slds-button slds-button_text-destructive" onClick={() => quitarLinea(i)}>×</button></td>
                         </tr>
                       ))}
@@ -487,7 +542,7 @@ export default function Cotizaciones() {
                     <tfoot>
                       <tr>
                         <td colSpan={4} style={{ textAlign: 'right', fontWeight: 600 }}>TOTALES</td>
-                        <td style={{ fontWeight: 600 }}>{money(totalMensual)}</td>
+                        <td style={{ fontWeight: 600 }}>{lineas.every((l) => l.es_modulo) ? '—' : money(totalMensual)}</td>
                         <td style={{ fontWeight: 600 }}>{money(totalAnual)}</td>
                         <td style={{ fontWeight: 600 }}>{money(totalContrato)}</td>
                         <td></td>

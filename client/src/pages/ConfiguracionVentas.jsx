@@ -141,13 +141,17 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
             </select></div></div>
           <div className="slds-col"><label className="slds-form-element__label">Nombre</label>
             <input className="slds-input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Ej. Pieza" required /></div>
-          <div className="slds-col"><label className="slds-form-element__label">Abreviatura</label>
-            <input className="slds-input" value={form.abreviatura} onChange={(e) => setForm({ ...form, abreviatura: e.target.value })} placeholder="pz" /></div>
+          <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Tipo</label>
+            <div className="slds-select_container"><select className="slds-select" value={form.abreviatura} onChange={(e) => setForm({ ...form, abreviatura: e.target.value })}>
+              <option value="">— Elegir —</option>
+              <option value="Módulo">Módulo</option>
+              <option value="Unidades">Unidades</option>
+            </select></div></div>
           <div className="slds-col slds-grow-none"><button className="slds-button slds-button_brand" type="submit">Agregar</button></div>
         </form>
       )}
       <table className="slds-table slds-table_bordered slds-table_cell-buffer">
-        <thead><tr className="slds-line-height_reset"><th>Servicio</th><th>Nombre</th><th>Abreviatura</th>{canEdit && <th>Acciones</th>}</tr></thead>
+        <thead><tr className="slds-line-height_reset"><th>Servicio</th><th>Nombre</th><th>Tipo</th>{canEdit && <th>Acciones</th>}</tr></thead>
         <tbody>
           {unidades.length === 0 && <tr><td colSpan={4} className="slds-text-color_weak">Sin unidades aún.</td></tr>}
           {unidades.map((u) => (
@@ -159,7 +163,11 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
                     {CATALOGO_SERVICIOS.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select></div></td>
                   <td><input className="slds-input" value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} /></td>
-                  <td><input className="slds-input" value={editForm.abreviatura || ''} onChange={(e) => setEditForm({ ...editForm, abreviatura: e.target.value })} /></td>
+                  <td><div className="slds-select_container"><select className="slds-select" value={editForm.abreviatura || ''} onChange={(e) => setEditForm({ ...editForm, abreviatura: e.target.value })}>
+                    <option value="">— Elegir —</option>
+                    <option value="Módulo">Módulo</option>
+                    <option value="Unidades">Unidades</option>
+                  </select></div></td>
                   <td><button className="slds-button slds-button_brand" onClick={() => guardar(u.id)}>Guardar</button>{' '}
                       <button className="slds-button slds-button_neutral" onClick={() => setEditId(null)}>Cancelar</button></td>
                 </>
@@ -293,10 +301,11 @@ function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) 
                 {CATALOGO_SERVICIOS.map((s) => <option key={s} value={s}>{s}</option>)}
               </select></div></div>
             <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Sector</label>
-              <input className="slds-input" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} placeholder="Privado / Público" style={{ maxWidth: 150 }} /></div>
-            <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Tipo</label>
-              <div className="slds-select_container"><select className="slds-select" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
-                <option value="producto">Producto</option><option value="servicio">Servicio</option></select></div></div>
+              <div className="slds-select_container"><select className="slds-select" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })}>
+                <option value="">— Elegir —</option>
+                <option value="Público">Público</option>
+                <option value="Privado">Privado</option>
+              </select></div></div>
             <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Unidad</label>
               <div className="slds-select_container"><select className="slds-select" value={form.unidad_id} onChange={(e) => setForm({ ...form, unidad_id: e.target.value })}>
                 <option value="">—</option>{unidades.filter((u) => u.servicio === form.nombre).map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}</select></div></div>
@@ -340,14 +349,15 @@ function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) 
   )
 }
 
-const TIPO_FORM_VACIO = { nombre: '', segmento: '', unidades_min: '', unidades_max: '', precio_piso: '', precio_lista: '' }
+const TIPO_FORM_VACIO = { nombre: '', unidades_min: '', unidades_max: '', precio_piso: '', precio_lista: '' }
 
 const rangoLabel = (t) => `${t.unidades_min} – ${t.unidades_max ?? '∞'} unid.`
 
 // Rangos de precio de un producto: [unidades_min, unidades_max] con precio_piso
 // (mínimo) y precio_lista (referencia), por unidad/mes. El rango se elige solo al
 // cotizar según las unidades; los años (1-6) y el precio (en banda) también al cotizar.
-function TiposVenta({ producto, canEdit, setTipos, ok, fail }) {
+function TiposVenta({ producto, canEdit, unidades, setTipos, ok, fail }) {
+  const esModulo = unidades.find((u) => u.id === producto.unidad_id)?.abreviatura === 'Módulo'
   const [form, setForm] = useState(TIPO_FORM_VACIO)
   const [editId, setEditId] = useState(null)
 
@@ -355,9 +365,8 @@ function TiposVenta({ producto, canEdit, setTipos, ok, fail }) {
     e.preventDefault()
     const payload = {
       nombre: form.nombre,
-      segmento: form.segmento,
-      unidades_min: Number(form.unidades_min),
-      unidades_max: form.unidades_max === '' ? null : Number(form.unidades_max),
+      unidades_min: esModulo ? 1 : Number(form.unidades_min),
+      unidades_max: esModulo ? null : (form.unidades_max === '' ? null : Number(form.unidades_max)),
       precio_piso: Number(form.precio_piso),
       precio_lista: Number(form.precio_lista),
     }
@@ -378,21 +387,20 @@ function TiposVenta({ producto, canEdit, setTipos, ok, fail }) {
   }
   function editar(t) {
     setEditId(t.id)
-    setForm({ nombre: t.nombre, segmento: t.segmento ?? '', unidades_min: t.unidades_min, unidades_max: t.unidades_max ?? '', precio_piso: t.precio_piso, precio_lista: t.precio_lista })
+    setForm({ nombre: t.nombre, unidades_min: t.unidades_min, unidades_max: t.unidades_max ?? '', precio_piso: t.precio_piso, precio_lista: t.precio_lista })
   }
 
   const tipos = [...(producto.tipos_venta || [])].sort((a, b) => a.unidades_min - b.unidades_min)
 
   return (
     <div className="slds-box slds-theme_shade slds-m-top_x-small" style={{ background: '#fafafc', borderRadius: 12 }}>
-      <p className="slds-text-body_small slds-text-color_weak slds-m-bottom_x-small">Rangos de precio (por unidad/mes; el rango se elige solo al cotizar según las unidades)</p>
+      <p className="slds-text-body_small slds-text-color_weak slds-m-bottom_x-small">{esModulo ? 'Precio anual del módulo (piso y lista)' : 'Rangos de precio (por unidad/mes; el rango se elige solo al cotizar según las unidades)'}</p>
       {tipos.length === 0 && <p className="slds-text-body_small slds-text-color_weak">Sin rangos. Agrega al menos uno.</p>}
       {tipos.map((t) => (
         <div key={t.id} className="activity-row">
           <div>
             <span className="activity-name">{t.nombre}</span>{' '}
-            <span className="role-badge role-viewer">{rangoLabel(t)}</span>{' '}
-            {t.segmento && <span className="slds-text-body_small slds-text-color_weak">· {t.segmento}</span>}
+            {!esModulo && <span className="role-badge role-viewer">{rangoLabel(t)}</span>}{' '}
           </div>
           <div>
             <span className="activity-amount">piso ${Number(t.precio_piso).toLocaleString()} · lista ${Number(t.precio_lista).toLocaleString()}</span>
@@ -405,13 +413,13 @@ function TiposVenta({ producto, canEdit, setTipos, ok, fail }) {
       {canEdit && (
         <form className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end slds-m-top_small" onSubmit={enviar}>
           <div className="slds-col slds-size_1-of-4"><label className="slds-form-element__label">Nombre</label>
-            <input className="slds-input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Ej. 10-20 unidades" required /></div>
-          <div className="slds-col"><label className="slds-form-element__label">Segmento sugerido</label>
-            <input className="slds-input" value={form.segmento} onChange={(e) => setForm({ ...form, segmento: e.target.value })} placeholder="Ej. Municipios pequeños (opcional)" /></div>
-          <div className="slds-col slds-grow-none" style={{ maxWidth: 100 }}><label className="slds-form-element__label">Unid. mín</label>
-            <input className="slds-input" type="number" min="1" step="1" value={form.unidades_min} onChange={(e) => setForm({ ...form, unidades_min: e.target.value })} required /></div>
-          <div className="slds-col slds-grow-none" style={{ maxWidth: 110 }}><label className="slds-form-element__label">Unid. máx</label>
-            <input className="slds-input" type="number" min="1" step="1" value={form.unidades_max} onChange={(e) => setForm({ ...form, unidades_max: e.target.value })} placeholder="sin tope" /></div>
+            <input className="slds-input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder={esModulo ? 'Ej. Módulo base' : 'Ej. 10-20 unidades'} required /></div>
+          {!esModulo && <>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 100 }}><label className="slds-form-element__label">Unid. mín</label>
+              <input className="slds-input" type="number" min="1" step="1" value={form.unidades_min} onChange={(e) => setForm({ ...form, unidades_min: e.target.value })} required /></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 110 }}><label className="slds-form-element__label">Unid. máx</label>
+              <input className="slds-input" type="number" min="1" step="1" value={form.unidades_max} onChange={(e) => setForm({ ...form, unidades_max: e.target.value })} placeholder="sin tope" /></div>
+          </>}
           <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}><label className="slds-form-element__label">Precio piso</label>
             <input className="slds-input" type="number" min="0" step="0.01" value={form.precio_piso} onChange={(e) => setForm({ ...form, precio_piso: e.target.value })} required /></div>
           <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}><label className="slds-form-element__label">Precio lista</label>
