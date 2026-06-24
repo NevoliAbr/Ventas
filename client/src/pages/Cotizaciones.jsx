@@ -354,33 +354,39 @@ export default function Cotizaciones() {
                 </div>
 
                 {/* Tabla de servicios */}
-                <table className="cot-table">
-                  <thead>
-                    <tr>
-                      <th>Concepto</th>
-                      <th className="num">Unidades</th>
-                      <th className="num">Ver total de contrato</th>
-                      <th className="num">Duración de contrato</th>
-                      <th className="num">Anual</th>
-                      <th>Notas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(verCot.items || []).map((i) => {
-                      const iMod = lineaEsModulo(i)
-                      return (
-                        <tr key={i.id}>
-                          <td>{i.descripcion}</td>
-                          <td className="num">{iMod ? '—' : Number(i.cantidad)}</td>
-                          <td className="num">{money(i.precio_unitario)}</td>
-                          <td className="num">{iMod ? `${Number(i.anios)} año${Number(i.anios) !== 1 ? 's' : ''}` : money(i.ingreso_mensual)}</td>
-                          <td className="num">{iMod ? money(i.precio_unitario) : money(i.ingreso_anual)}</td>
-                          <td></td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                {(() => {
+                  const docItems = verCot.items || []
+                  const todosModulo = docItems.length > 0 && docItems.every((i) => lineaEsModulo(i))
+                  return (
+                  <table className="cot-table">
+                    <thead>
+                      <tr>
+                        <th>Concepto</th>
+                        {!todosModulo && <th className="num">Unidades</th>}
+                        <th className="num">Ver total de contrato</th>
+                        <th className="num">Duración de contrato</th>
+                        <th className="num">Anual</th>
+                        <th>Notas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {docItems.map((i) => {
+                        const iMod = lineaEsModulo(i)
+                        return (
+                          <tr key={i.id}>
+                            <td>{i.descripcion}</td>
+                            {!todosModulo && <td className="num">{iMod ? '—' : Number(i.cantidad)}</td>}
+                            <td className="num">{money(i.precio_unitario)}</td>
+                            <td className="num">{iMod ? `${Number(i.anios)} año${Number(i.anios) !== 1 ? 's' : ''}` : money(i.ingreso_mensual)}</td>
+                            <td className="num">{iMod ? money(i.precio_unitario) : money(i.ingreso_anual)}</td>
+                            <td></td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                  )
+                })()}
 
                 {/* Total */}
                 {(() => {
