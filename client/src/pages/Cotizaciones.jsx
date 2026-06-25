@@ -13,6 +13,10 @@ const hoy = () => new Date().toISOString().slice(0, 10)
 const money = (n) => '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const ANIOS = [1, 2, 3, 4, 5, 6]
 const LINEA_VACIA = { servicio: '', productoId: '', cantidad: '', anios: '1', precio: '' }
+const ETAPAS_PIPELINE = ['Prospecting', 'Discovery', 'Proposal', 'Negotiation', 'Won', 'Lost']
+const PROBS_PIPELINE = [0, 0.25, 0.5, 0.75, 0.9, 1]
+const PROB_LABELS_PIPELINE = { 0: 'Sin posibilidad', 0.25: 'Interesado', 0.5: 'En aprobación', 0.75: 'Aprobado / Finanzas', 0.9: 'Esperando contrato', 1: 'CERRADO' }
+const TRIMESTRES_PIPELINE = ['Q1', 'Q2', 'Q3', 'Q4']
 
 const rangoPara = (rangos, cantidad) =>
   rangos.find((r) => cantidad >= r.unidades_min && (r.unidades_max == null || cantidad <= r.unidades_max))
@@ -60,6 +64,15 @@ export default function Cotizaciones() {
   const [editId, setEditId] = useState(null)
   const [nl, setNl] = useState(LINEA_VACIA)
   const [errLinea, setErrLinea] = useState(null)
+  const [pendientesPipeline, setPendientesPipeline] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('lcg_pendientes_pipeline') || '[]') } catch { return [] }
+  })
+  const [mostrarPendientesPipeline, setMostrarPendientesPipeline] = useState(true)
+  const [pipelineSeleccionado, setPipelineSeleccionado] = useState(null)
+  const [pipelineGuardando, setPipelineGuardando] = useState(false)
+  const [errPipeline, setErrPipeline] = useState(null)
+
+  const guardarPendientesLS = (lista) => localStorage.setItem('lcg_pendientes_pipeline', JSON.stringify(lista))
 
   useEffect(() => {
     if (!perms.facultades.ventasVer) { setCargando(false); return }
@@ -85,6 +98,7 @@ export default function Cotizaciones() {
 
   const ok = (m) => { setError(null); setAviso(m) }
   const fail = (e) => { setAviso(null); setError(e.message) }
+  const pm = (patch) => setPipelineSeleccionado((p) => ({ ...p, ...patch }))
   function salir() { logout(); navigate('/') }
 
   // Opciones del dropdown según la fuente activa
@@ -147,7 +161,10 @@ export default function Cotizaciones() {
       const rango = rangoPara(prod?.tipos_venta || [], 1)
       setNl((s) => ({ ...s, productoId: id, cantidad: '1', precio: rango ? String(rango.precio_lista) : '' }))
     } else {
-      setNl((s) => ({ ...s, productoId: id, cantidad: '', precio: '' }))
+      const rangos = prod?.tipos_venta || []
+      const minCant = rangos.length > 0 ? Math.min(...rangos.map((r) => r.unidades_min)) : 1
+      const rango = rangoPara(rangos, minCant)
+      setNl((s) => ({ ...s, productoId: id, cantidad: String(minCant), precio: rango ? String(rango.precio_lista) : '' }))
     }
     setErrLinea(null)
   }
@@ -168,8 +185,8 @@ export default function Cotizaciones() {
     if (esModulo) {
       const rango = rangoPara(rangos, 1)
       if (!rango) return setErrLinea('No hay rango configurado para este módulo.')
-      if (!Number.isFinite(precio) || precio < rango.precio_piso || precio > rango.precio_lista) {
-        return setErrLinea(`El precio debe estar entre ${money(rango.precio_piso)} (piso) y ${money(rango.precio_lista)} (lista).`)
+      if (!Number.isFinite(precio) || precio < rango.precio_piso) {
+        return setErrLinea(`El precio no puede ser menor al piso (${money(rango.precio_piso)}).`)
       }
       const ingreso_anual = Math.round(precio * 100) / 100
       const ingreso_mensual = Math.round(precio / 12 * 100) / 100
@@ -183,8 +200,8 @@ export default function Cotizaciones() {
       if (!Number.isInteger(cantidad) || cantidad <= 0) return setErrLinea('Las unidades deben ser un entero mayor a 0.')
       const rango = rangoPara(rangos, cantidad)
       if (!rango) return setErrLinea(`No hay un rango configurado para ${cantidad} unidades.`)
-      if (!Number.isFinite(precio) || precio < rango.precio_piso || precio > rango.precio_lista) {
-        return setErrLinea(`El precio debe estar entre ${money(rango.precio_piso)} (piso) y ${money(rango.precio_lista)} (lista).`)
+      if (!Number.isFinite(precio) || precio < rango.precio_piso) {
+        return setErrLinea(`El precio no puede ser menor al piso (${money(rango.precio_piso)}).`)
       }
       const ingreso_mensual = Math.round(precio * cantidad * 100) / 100
       const ingreso_anual = Math.round(ingreso_mensual * 12 * 100) / 100
@@ -219,13 +236,78 @@ export default function Cotizaciones() {
         const { venta } = await ventasApi.update(editId, payload)
         setCotizaciones((p) => p.map((v) => (v.id === editId ? { ...venta, num_items: venta.items.length } : v)))
         ok(`Cotización ${venta.folio || ''} actualizada.`)
+        limpiarForm()
       } else {
         const { venta } = await ventasApi.create(payload)
         setCotizaciones((p) => [{ ...venta, num_items: venta.items.length }, ...p])
-        ok(`Cotización ${venta.folio || ''} generada.`)
+        limpiarForm()
+        if (origenTipo === 'universo' || origenTipo === 'prospecto') {
+          const clienteRec =
+            origenTipo === 'universo'
+              ? listaUniverso.find((r) => r.id === origenId)
+              : listaProspectos.find((r) => r.id === origenId)
+          const pl = venta.items?.[0]
+          const nuevoPendiente = {
+            _folio: venta.folio || '',
+            prospecto: origenNombre || '',
+            sector: clienteRec?.rubro || '',
+            tipo: clienteRec?.tipo || '',
+            productoId: pl?.producto_id || '',
+            unidades: String(pl?.cantidad ?? ''),
+            anios: String(pl?.anios ?? '1'),
+            precio: String(pl?.precio_unitario ?? ''),
+            prob: '0.25',
+            etapa: 'Prospecting',
+            trimestre: 'Q2',
+            mes: '',
+            notas: '',
+            responsable: clienteRec?.responsable || '',
+            contacto_nombre: clienteRec?.contacto_nombre || '',
+            contacto_telefono: clienteRec?.telefono || '',
+            fecha_cotizacion: (venta.fecha || '').slice(0, 10),
+            proximo_paso: '',
+            fecha_sig_paso: '',
+          }
+          setPendientesPipeline((prev) => {
+            const next = [...prev, nuevoPendiente]
+            guardarPendientesLS(next)
+            return next
+          })
+          setMostrarPendientesPipeline(true)
+        } else {
+          ok(`Cotización ${venta.folio || ''} generada.`)
+        }
       }
-      limpiarForm()
     } catch (e) { fail(e) } finally { setGuardando(false) }
+  }
+
+  async function guardarPipeline(e) {
+    e.preventDefault()
+    const f = pipelineSeleccionado
+    setPipelineGuardando(true); setErrPipeline(null)
+    try {
+      await oportunidadesApi.create({
+        prospecto: f.prospecto, sector: f.sector, tipo: f.tipo,
+        producto_id: f.productoId, unidades: Number(f.unidades), anios: Number(f.anios),
+        precio_unitario: Number(f.precio), prob_cierre: Number(f.prob),
+        etapa: f.etapa, trimestre: f.trimestre, mes_estimado: f.mes,
+        notas: f.notas, responsable: f.responsable,
+        contacto_nombre: f.contacto_nombre, contacto_telefono: f.contacto_telefono,
+        fecha_cotizacion: f.fecha_cotizacion, proximo_paso: f.proximo_paso, fecha_sig_paso: f.fecha_sig_paso,
+      })
+      const folio = f._folio
+      setPendientesPipeline((prev) => {
+        const next = prev.filter((x) => x._folio !== folio)
+        guardarPendientesLS(next)
+        return next
+      })
+      setPipelineSeleccionado(null)
+      ok(`Cotización ${folio} · oportunidad agregada a Pipeline.`)
+    } catch (err) {
+      setErrPipeline(err.message)
+    } finally {
+      setPipelineGuardando(false)
+    }
   }
 
   async function editar(v) {
@@ -411,13 +493,22 @@ export default function Cotizaciones() {
                 <div className="cot-condiciones">
                   <div className="cot-condiciones-titulo">CONDICIONES</div>
                   <div>Vigencia de la cotización: 30 días naturales</div>
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#9ca3af' }}>* La presente cotización constituye una propuesta comercial y no representa una obligación contractual para ninguna de las partes hasta la firma del contrato o la aceptación formal de la propuesta.</div>
                   {verCot.notas && <div style={{ marginTop: '0.4rem' }}>{verCot.notas}</div>}
+                  {clienteDetalle?.responsable && (
+                    <div style={{ marginTop: '0.6rem' }}><strong>Representante:</strong> {clienteDetalle.responsable}</div>
+                  )}
                 </div>
 
                 {/* Pie */}
                 <div className="cot-foot">
                   <div><img src="/ico/icono_web.ico" alt="" width={48} height={48} style={{ verticalAlign: 'middle', marginRight: 6 }} /><a href="https://lcg.mx" target="_blank" rel="noreferrer">lcg.mx</a></div>
                   <div><img src="/ico/icono_ubicacion.ico" alt="" width={48} height={48} style={{ verticalAlign: 'middle', marginRight: 6 }} />LCG IT &amp; Consulting – Euler 152, Chapultepec Morales, CMDX</div>
+                </div>
+
+                {/* Aviso de privacidad */}
+                <div style={{ marginTop: '1rem', fontSize: '0.72rem', color: '#6b7280', textAlign: 'center', borderTop: '1px solid #e5e7eb', paddingTop: '0.6rem' }}>
+                  Los datos personales contenidos en esta cotización serán tratados conforme al Aviso de Privacidad de LCG IT &amp; Consulting.
                 </div>
               </div>
             </div>
@@ -535,7 +626,7 @@ export default function Cotizaciones() {
                     {!esModulo && nl.cantidad && !rangoSel && <p className="slds-text-color_error slds-text-body_small slds-m-top_x-small">⚠️ No hay rango para {nl.cantidad} unidades.</p>}
                     {rangoSel && (
                       <p className="slds-text-body_small slds-text-color_weak slds-m-top_x-small">
-                        Rango: <b>{rangoSel.nombre}</b> · banda: piso {money(rangoSel.precio_piso)} – lista {money(rangoSel.precio_lista)}{esModulo ? ' · Total = precio/año × años' : ` · Mensual = precio × ${nl.cantidad}; Anual = ×12; Total = anual × años`}
+                        Rango: <b>{rangoSel.nombre}</b> · precio mínimo: {money(rangoSel.precio_piso)} · referencia: {money(rangoSel.precio_lista)}{esModulo ? ' · Total = precio/año × años' : ` · Mensual = precio × ${nl.cantidad}; Anual = ×12; Total = anual × años`}
                       </p>
                     )}
                     {errLinea && <p className="slds-text-color_error slds-text-body_small slds-m-top_x-small">⚠️ {errLinea}</p>}
@@ -588,6 +679,146 @@ export default function Cotizaciones() {
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Chips: cotizaciones pendientes de pasar a Pipeline */}
+            {pendientesPipeline.length > 0 && (
+              <div className="slds-box slds-m-bottom_medium no-print" style={{ borderLeft: '4px solid #0070d2', background: '#f0f4ff' }}>
+                <div className="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                  <div className="slds-grid slds-grid_vertical-align-center" style={{ gap: 10 }}>
+                    <span style={{ background: '#0070d2', color: '#fff', borderRadius: 999, padding: '2px 11px', fontWeight: 700, fontSize: '0.85rem' }}>{pendientesPipeline.length}</span>
+                    <strong>Pendientes de Pipeline</strong>
+                    <span className="slds-text-color_weak slds-text-body_small">— Selecciona uno para completar sus datos</span>
+                  </div>
+                  <button className="slds-button slds-button_neutral" onClick={() => setMostrarPendientesPipeline((v) => !v)}>
+                    {mostrarPendientesPipeline ? 'Ocultar ▲' : 'Ver ▼'}
+                  </button>
+                </div>
+                {mostrarPendientesPipeline && (
+                  <div className="slds-m-top_small" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {pendientesPipeline.map((item) => (
+                      <button key={item._folio} className="slds-button slds-button_neutral"
+                        style={{ textAlign: 'left', borderColor: pipelineSeleccionado?._folio === item._folio ? '#0070d2' : undefined, fontWeight: pipelineSeleccionado?._folio === item._folio ? 700 : undefined }}
+                        onClick={() => { setPipelineSeleccionado(item); setErrPipeline(null) }}>
+                        <strong>{item.prospecto}</strong> · {item._folio}{item.responsable && <> · {item.responsable}</>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Formulario pipeline (visible al seleccionar un chip) */}
+            {pipelineSeleccionado && (
+              <div className="slds-box slds-theme_default slds-m-bottom_medium no-print" style={{ borderLeft: '4px solid #0070d2' }}>
+                <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
+                  <h2 className="slds-text-heading_small">Agregar a Pipeline · {pipelineSeleccionado._folio}</h2>
+                  <button type="button" className="slds-button slds-button_neutral" onClick={() => { setPipelineSeleccionado(null); setErrPipeline(null) }}>Cerrar</button>
+                </div>
+                <form onSubmit={guardarPipeline}>
+                  <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end slds-m-bottom_x-small">
+                    <div className="slds-col slds-size_1-of-2">
+                      <label className="slds-form-element__label">Empresa / Municipio *</label>
+                      <input className="slds-input" value={pipelineSeleccionado.prospecto} onChange={(e) => pm({ prospecto: e.target.value })} required />
+                    </div>
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}>
+                      <label className="slds-form-element__label">Tipo</label>
+                      <div className="slds-select_container"><select className="slds-select" value={pipelineSeleccionado.tipo} onChange={(e) => pm({ tipo: e.target.value })}>
+                        <option value="">—</option><option value="Empresa">Empresa</option><option value="Municipio">Municipio</option>
+                      </select></div>
+                    </div>
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 180 }}>
+                      <label className="slds-form-element__label">Sector</label>
+                      <input className="slds-input" value={pipelineSeleccionado.sector} onChange={(e) => pm({ sector: e.target.value })} placeholder="Logística…" />
+                    </div>
+                  </div>
+                  <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end slds-m-bottom_x-small">
+                    <div className="slds-col slds-size_1-of-3">
+                      <label className="slds-form-element__label">Producto *</label>
+                      <div className="slds-select_container"><select className="slds-select" value={pipelineSeleccionado.productoId} onChange={(e) => pm({ productoId: e.target.value })} required>
+                        <option value="">— Elegir —</option>
+                        {vendibles.map((p) => <option key={p.id} value={p.id}>{p.nombre}{p.sector ? ` (${p.sector})` : ''}</option>)}
+                      </select></div>
+                    </div>
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 110 }}>
+                      <label className="slds-form-element__label">Unidades *</label>
+                      <input className="slds-input" type="number" min="1" value={pipelineSeleccionado.unidades} onChange={(e) => pm({ unidades: e.target.value })} required />
+                    </div>
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 80 }}>
+                      <label className="slds-form-element__label">Años</label>
+                      <div className="slds-select_container"><select className="slds-select" value={pipelineSeleccionado.anios} onChange={(e) => pm({ anios: e.target.value })}>
+                        {ANIOS.map((a) => <option key={a} value={a}>{a}</option>)}
+                      </select></div>
+                    </div>
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 155 }}>
+                      <label className="slds-form-element__label">Precio unit./mes *</label>
+                      <input className="slds-input" type="number" min="0" step="0.01" value={pipelineSeleccionado.precio} onChange={(e) => pm({ precio: e.target.value })} required />
+                    </div>
+                  </div>
+                  <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end slds-m-bottom_x-small">
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 230 }}>
+                      <label className="slds-form-element__label">Prob. cierre</label>
+                      <div className="slds-select_container"><select className="slds-select" value={pipelineSeleccionado.prob} onChange={(e) => pm({ prob: e.target.value })}>
+                        {PROBS_PIPELINE.map((p) => <option key={p} value={p}>{Math.round(p * 100)}% — {PROB_LABELS_PIPELINE[p]}</option>)}
+                      </select></div>
+                    </div>
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 155 }}>
+                      <label className="slds-form-element__label">Etapa</label>
+                      <div className="slds-select_container"><select className="slds-select" value={pipelineSeleccionado.etapa} onChange={(e) => pm({ etapa: e.target.value })}>
+                        {ETAPAS_PIPELINE.map((et) => <option key={et} value={et}>{et}</option>)}
+                      </select></div>
+                    </div>
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 90 }}>
+                      <label className="slds-form-element__label">Trimestre</label>
+                      <div className="slds-select_container"><select className="slds-select" value={pipelineSeleccionado.trimestre} onChange={(e) => pm({ trimestre: e.target.value })}>
+                        {TRIMESTRES_PIPELINE.map((q) => <option key={q} value={q}>{q}</option>)}
+                      </select></div>
+                    </div>
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}>
+                      <label className="slds-form-element__label">Mes estimado</label>
+                      <input className="slds-input" value={pipelineSeleccionado.mes} onChange={(e) => pm({ mes: e.target.value })} placeholder="Julio…" />
+                    </div>
+                  </div>
+                  <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end slds-m-bottom_x-small">
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 185 }}>
+                      <label className="slds-form-element__label">Responsable venta</label>
+                      <input className="slds-input" value={pipelineSeleccionado.responsable} onChange={(e) => pm({ responsable: e.target.value })} />
+                    </div>
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 185 }}>
+                      <label className="slds-form-element__label">Contacto principal</label>
+                      <input className="slds-input" value={pipelineSeleccionado.contacto_nombre} onChange={(e) => pm({ contacto_nombre: e.target.value })} />
+                    </div>
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}>
+                      <label className="slds-form-element__label">Tel. contacto</label>
+                      <input className="slds-input" value={pipelineSeleccionado.contacto_telefono} onChange={(e) => pm({ contacto_telefono: e.target.value })} />
+                    </div>
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 160 }}>
+                      <label className="slds-form-element__label">Fecha cotización</label>
+                      <input className="slds-input" type="date" value={pipelineSeleccionado.fecha_cotizacion} onChange={(e) => pm({ fecha_cotizacion: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end slds-m-bottom_x-small">
+                    <div className="slds-col">
+                      <label className="slds-form-element__label">Próximo paso</label>
+                      <input className="slds-input" value={pipelineSeleccionado.proximo_paso} onChange={(e) => pm({ proximo_paso: e.target.value })} placeholder="Enviar propuesta…" />
+                    </div>
+                    <div className="slds-col slds-grow-none" style={{ maxWidth: 160 }}>
+                      <label className="slds-form-element__label">Fecha próximo paso</label>
+                      <input className="slds-input" type="date" value={pipelineSeleccionado.fecha_sig_paso} onChange={(e) => pm({ fecha_sig_paso: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="slds-m-bottom_small">
+                    <label className="slds-form-element__label">Notas</label>
+                    <input className="slds-input" value={pipelineSeleccionado.notas} onChange={(e) => pm({ notas: e.target.value })} placeholder="Observaciones…" />
+                  </div>
+                  {errPipeline && <p className="slds-text-color_error slds-text-body_small slds-m-bottom_x-small">⚠️ {errPipeline}</p>}
+                  <div style={{ display: 'flex', gap: 8, marginTop: '0.75rem' }}>
+                    <button type="submit" className="slds-button slds-button_brand" disabled={pipelineGuardando}>
+                      {pipelineGuardando ? 'Guardando…' : 'Agregar a Pipeline'}
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
 

@@ -50,9 +50,9 @@ async function construirLineas(items) {
 
     const precio = Number(it.precio_unitario)
     if (!Number.isFinite(precio)) return { error: `Precio inválido en "${prod.nombre}".` }
-    if (precio < rango.precio_piso || precio > rango.precio_lista) {
+    if (precio < rango.precio_piso) {
       return {
-        error: `"${prod.nombre} — ${rango.nombre}": el precio unitario debe estar entre ${rango.precio_piso} (piso) y ${rango.precio_lista} (lista).`,
+        error: `"${prod.nombre} — ${rango.nombre}": el precio unitario no puede ser menor al piso (${rango.precio_piso}).`,
       }
     }
 

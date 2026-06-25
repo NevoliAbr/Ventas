@@ -87,6 +87,11 @@ export default function Pipeline() {
   const [editId, setEditId] = useState(null)
   const inputArchivoRef = useRef(null)
   const [busqueda, setBusqueda] = useState('')
+  const [pendientesCot, setPendientesCot] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('lcg_pendientes_pipeline') || '[]') } catch { return [] }
+  })
+  const [mostrarPendientesCot, setMostrarPendientesCot] = useState(true)
+  const [pendienteFolioActivo, setPendienteFolioActivo] = useState(null)
 
   useEffect(() => {
     if (!perms.facultades.ventasVer) { setCargando(false); return }
@@ -146,6 +151,21 @@ export default function Pipeline() {
   const totalPipeline = useMemo(() => ops.reduce((s, o) => s + Number(o.valor_total || 0), 0), [ops])
   const totalForecast = useMemo(() => ops.reduce((s, o) => s + Number(o.valor_ponderado || 0), 0), [ops])
 
+  function seleccionarPendienteCot(item) {
+    setEditId(null)
+    setForm({
+      prospecto: item.prospecto, sector: item.sector, tipo: item.tipo,
+      productoId: item.productoId, unidades: item.unidades, anios: item.anios,
+      precio: item.precio, prob: item.prob, etapa: item.etapa,
+      trimestre: item.trimestre, mes: item.mes, notas: item.notas,
+      responsable: item.responsable, contacto_nombre: item.contacto_nombre,
+      contacto_telefono: item.contacto_telefono, fecha_cotizacion: item.fecha_cotizacion,
+      proximo_paso: item.proximo_paso, fecha_sig_paso: item.fecha_sig_paso,
+    })
+    setPendienteFolioActivo(item._folio)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   function cambiarProducto(id) { setForm({ ...form, productoId: id, unidades: '', precio: '' }) }
   function cambiarUnidades(v) {
     const c = Number(v); const r = Number.isInteger(c) && c > 0 ? rangoPara(rangos, c) : null
@@ -168,7 +188,18 @@ export default function Pipeline() {
         setOps((p) => p.map((o) => (o.id === editId ? oportunidad : o))); ok('Oportunidad actualizada.')
       } else {
         const { oportunidad } = await oportunidadesApi.create(payload)
-        setOps((p) => [oportunidad, ...p]); ok('Oportunidad agregada.')
+        setOps((p) => [oportunidad, ...p])
+        if (pendienteFolioActivo) {
+          setPendientesCot((prev) => {
+            const next = prev.filter((x) => x._folio !== pendienteFolioActivo)
+            localStorage.setItem('lcg_pendientes_pipeline', JSON.stringify(next))
+            return next
+          })
+          setPendienteFolioActivo(null)
+          ok(`Cotización ${pendienteFolioActivo} · oportunidad agregada a Pipeline.`)
+        } else {
+          ok('Oportunidad agregada.')
+        }
       }
       setForm(VACIO); setEditId(null)
     } catch (e) { fail(e) }
@@ -234,11 +265,37 @@ export default function Pipeline() {
             <div className="metric-card"><p className="metric-label">Forecast (ponderado)</p><p className="metric-value">{money(totalForecast)}</p></div></div>
         </div>
 
+        {pendientesCot.length > 0 && (
+          <div className="slds-box slds-m-bottom_medium" style={{ borderLeft: '4px solid #0070d2', background: '#f0f4ff' }}>
+            <div className="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+              <div className="slds-grid slds-grid_vertical-align-center" style={{ gap: 10 }}>
+                <span style={{ background: '#0070d2', color: '#fff', borderRadius: 999, padding: '2px 11px', fontWeight: 700, fontSize: '0.85rem' }}>{pendientesCot.length}</span>
+                <strong>Pendientes de Pipeline</strong>
+                <span className="slds-text-color_weak slds-text-body_small">— Selecciona uno para completar sus datos</span>
+              </div>
+              <button className="slds-button slds-button_neutral" onClick={() => setMostrarPendientesCot((v) => !v)}>
+                {mostrarPendientesCot ? 'Ocultar ▲' : 'Ver ▼'}
+              </button>
+            </div>
+            {mostrarPendientesCot && (
+              <div className="slds-m-top_small" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {pendientesCot.map((item) => (
+                  <button key={item._folio} className="slds-button slds-button_neutral"
+                    style={{ textAlign: 'left', borderColor: pendienteFolioActivo === item._folio ? '#0070d2' : undefined, fontWeight: pendienteFolioActivo === item._folio ? 700 : undefined }}
+                    onClick={() => seleccionarPendienteCot(item)}>
+                    <strong>{item.prospecto}</strong> · {item._folio}{item.responsable && <> · {item.responsable}</>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {canEdit && (
           <div className="slds-box slds-theme_default slds-m-bottom_medium">
             <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
-              <h2 className="slds-text-heading_small">{editId ? 'Editar oportunidad' : 'Nueva oportunidad'}</h2>
-              {editId && <button className="slds-button slds-button_neutral" onClick={() => { setForm(VACIO); setEditId(null) }}>Cancelar</button>}
+              <h2 className="slds-text-heading_small">{editId ? 'Editar oportunidad' : pendienteFolioActivo ? `Agregar cotización ${pendienteFolioActivo} a Pipeline` : 'Nueva oportunidad'}</h2>
+              {(editId || pendienteFolioActivo) && <button className="slds-button slds-button_neutral" onClick={() => { setForm(VACIO); setEditId(null); setPendienteFolioActivo(null) }}>Cancelar</button>}
             </div>
             {vendibles.length === 0 ? (
               <p className="slds-text-color_weak slds-text-body_small">Crea productos con rangos en <Link to="/configuracion-ventas">Configuración de ventas</Link>.</p>
