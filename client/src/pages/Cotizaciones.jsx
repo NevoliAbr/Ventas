@@ -495,9 +495,7 @@ export default function Cotizaciones() {
                   <div>Vigencia de la cotización: 30 días naturales</div>
                   <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#9ca3af' }}>* La presente cotización constituye una propuesta comercial y no representa una obligación contractual para ninguna de las partes hasta la firma del contrato o la aceptación formal de la propuesta.</div>
                   {verCot.notas && <div style={{ marginTop: '0.4rem' }}>{verCot.notas}</div>}
-                  {clienteDetalle?.responsable && (
-                    <div style={{ marginTop: '0.6rem' }}><strong>Dirección de Desarrollo de Negocios:</strong> {clienteDetalle.responsable}</div>
-                  )}
+                  <div style={{ marginTop: '0.6rem' }}><strong>Representante:</strong> Dirección de Desarrollo de Negocios</div>
                 </div>
 
                 {/* Pie */}
