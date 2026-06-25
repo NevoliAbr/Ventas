@@ -500,6 +500,17 @@ table.cot-table {
 .slds-scope .slds-tabs_default__content {
   background: transparent !important;
 }
+/* Tabs dentro de caja blanca: texto azul para que sea visible */
+.slds-scope .slds-box .slds-tabs_default__link {
+  color: #0d2b5e !important;
+}
+.slds-scope .slds-box .slds-tabs_default__item.slds-is-active .slds-tabs_default__link {
+  color: #0070d2 !important;
+  border-bottom-color: #0070d2 !important;
+}
+.slds-scope .slds-box .slds-tabs_default__nav {
+  border-bottom-color: #c9d3e0 !important;
+}
 
 /* Textarea */
 .slds-scope textarea.slds-textarea {
