@@ -5,16 +5,16 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { permissionsFor } from '../lib/permissions.js'
 import { prospectoApi, reunionApi, universoApi } from '../services/api.js'
 
-const COLS_EXPORT = ['Empresa / Municipio', 'Tipo', 'Contacto principal', 'Teléfono', 'Responsable LCG']
+const COLS_EXPORT = ['Empresa / Municipio', 'Tipo', 'Contacto principal', 'Teléfono 1', 'Teléfono 2', 'Responsable LCG']
 const MAP_IMPORT = {
   'empresa / municipio': 'empresa', 'tipo': 'tipo', 'contacto principal': 'contacto_nombre',
-  'teléfono': 'telefono', 'responsable lcg': 'responsable',
+  'teléfono 1': 'telefono', 'teléfono': 'telefono', 'teléfono 2': 'telefono2', 'responsable lcg': 'responsable',
 }
 
 function exportarExcel(lista) {
   const filas = lista.map((r) => ({
     'Empresa / Municipio': r.empresa, 'Tipo': r.tipo || '', 'Contacto principal': r.contacto_nombre || '',
-    'Teléfono': r.telefono || '', 'Responsable LCG': r.responsable || '',
+    'Teléfono 1': r.telefono || '', 'Teléfono 2': r.telefono2 || '', 'Responsable LCG': r.responsable || '',
   }))
   const ws = XLSX.utils.json_to_sheet(filas)
   ws['!cols'] = COLS_EXPORT.map((c) => ({ wch: Math.max(c.length + 4, 18) }))
@@ -23,12 +23,20 @@ function exportarExcel(lista) {
   XLSX.writeFile(wb, `prospectos_${new Date().toISOString().slice(0, 10)}.xlsx`)
 }
 
+function descargarPlantilla() {
+  const ws = XLSX.utils.aoa_to_sheet([COLS_EXPORT])
+  ws['!cols'] = COLS_EXPORT.map((c) => ({ wch: Math.max(c.length + 4, 18) }))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Prospectos')
+  XLSX.writeFile(wb, 'plantilla_prospectos.xlsx')
+}
+
 const STATUS_COLOR = {
   Agendada: '#2563eb', Realizada: '#16a34a', Reprogramada: '#d97706', Cancelada: '#dc2626',
 }
 const STATUS_REUNION = ['Agendada', 'Realizada', 'Reprogramada', 'Cancelada']
 
-const VACIO = { empresa: '', tipo: '', contacto_nombre: '', telefono: '', responsable: '' }
+const VACIO = { empresa: '', tipo: '', contacto_nombre: '', telefono: '', telefono2: '', responsable: '' }
 const REUNION_VACIA = { fecha: '', status: '', observaciones: '' }
 
 export default function Prospectos() {
@@ -39,7 +47,7 @@ export default function Prospectos() {
   const canDelete = perms.facultades.ventasEliminar
 
   const [lista, setLista] = useState([])
-  const [opts, setOpts] = useState({ statusReunion: STATUS_REUNION, tipos: [] })
+  const [opts, setOpts] = useState({ statusReunion: STATUS_REUNION, tipos: [], responsables: [] })
   const [pendientes, setPendientes] = useState([])
   const [mostrarPendientes, setMostrarPendientes] = useState(true)
   const [universoId, setUniversoId] = useState(null)
@@ -64,7 +72,7 @@ export default function Prospectos() {
     Promise.all([prospectoApi.list(), universoApi.pendientes()])
       .then(([d, u]) => {
         setLista(d.prospectos)
-        setOpts({ statusReunion: d.statusReunion || STATUS_REUNION, tipos: d.tipos })
+        setOpts({ statusReunion: d.statusReunion || STATUS_REUNION, tipos: d.tipos, responsables: d.responsables })
         setPendientes(u.pendientes)
       })
       .catch((e) => setError(e.message))
@@ -78,7 +86,7 @@ export default function Prospectos() {
 
   function seleccionarPendiente(p) {
     setUniversoId(p.id); setEditId(null)
-    setForm({ ...VACIO, empresa: p.empresa, tipo: p.tipo || '', contacto_nombre: p.contacto_nombre || '', telefono: p.telefono || '', responsable: p.responsable || '' })
+    setForm({ ...VACIO, empresa: p.empresa, tipo: p.tipo || '', contacto_nombre: p.contacto_nombre || '', telefono: p.telefono || '', telefono2: p.telefono2 || '', responsable: p.responsable || '' })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -97,7 +105,7 @@ export default function Prospectos() {
           setUniversoId(null)
           ok('Prospecto agregado.')
         } else {
-          setBaseParaUniverso({ empresa: form.empresa, tipo: form.tipo, contacto_nombre: form.contacto_nombre, telefono: form.telefono, responsable: form.responsable })
+          setBaseParaUniverso({ empresa: form.empresa, tipo: form.tipo, contacto_nombre: form.contacto_nombre, telefono: form.telefono, telefono2: form.telefono2, responsable: form.responsable })
           setFormUni({ rubro: '', segmento: '', email: '', sitio_web: '', linkedin: '', fecha_contacto: '', status_contacto: 'Primera reunión' })
           ok('Prospecto agregado. Completa los datos de Universo o pasa de largo.')
         }
@@ -116,7 +124,7 @@ export default function Prospectos() {
 
   function editar(r) {
     setEditId(r.id)
-    setForm({ empresa: r.empresa, tipo: r.tipo || '', contacto_nombre: r.contacto_nombre || '', telefono: r.telefono || '', responsable: r.responsable || '' })
+    setForm({ empresa: r.empresa, tipo: r.tipo || '', contacto_nombre: r.contacto_nombre || '', telefono: r.telefono || '', telefono2: r.telefono2 || '', responsable: r.responsable || '' })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -167,15 +175,16 @@ export default function Prospectos() {
       const wb = XLSX.read(buffer, { type: 'array', cellDates: true })
       const filas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' })
       if (filas.length === 0) return fail(new Error('El archivo no tiene datos.'))
-      const registros = filas.map((fila) => {
+      const registros = filas.reduce((acc, fila) => {
         const reg = {}
         for (const [col, val] of Object.entries(fila)) {
           const campo = MAP_IMPORT[col.trim().toLowerCase()]
           if (!campo) continue
           reg[campo] = val instanceof Date ? val.toISOString().slice(0, 10) : String(val ?? '').trim()
         }
-        return reg
-      }).filter((r) => r.empresa)
+        if (reg.empresa) acc.push(reg)
+        return acc
+      }, [])
       if (registros.length === 0) return fail(new Error('No se encontraron filas con empresa válida.'))
       const { importados } = await prospectoApi.importar(registros)
       const { prospectos } = await prospectoApi.list()
@@ -193,6 +202,11 @@ export default function Prospectos() {
   }
 
   const colSpanTotal = (canEdit || canDelete) ? 6 : 5
+  const q = busqueda.toLowerCase()
+  const listaMostrada = busqueda
+    ? lista.filter((r) => [r.empresa, r.tipo, r.contacto_nombre, r.telefono, r.telefono2, r.responsable]
+        .some((v) => (v || '').toLowerCase().includes(q)))
+    : lista
 
   return (
     <div className="dashboard slds-scope">
@@ -205,271 +219,311 @@ export default function Prospectos() {
             <p className="dash-subtitle">Seguimiento de reuniones · Cuando piden cotización → marcar y pasan a Forecast</p>
           </div>
           <div className="slds-grid slds-grid_vertical-align-center" style={{ gap: 8 }}>
-            {lista.length > 0 && <button className="slds-button slds-button_neutral" onClick={() => exportarExcel(lista)}>⬇ Exportar</button>}
+            {lista.length > 0 && <button type="button" className="slds-button slds-button_neutral" onClick={() => exportarExcel(lista)}>⬇ Exportar</button>}
             {canEdit && (<>
-              <button className="slds-button slds-button_neutral" onClick={() => inputArchivoRef.current?.click()}>⬆ Importar</button>
+              <button type="button" className="slds-button slds-button_neutral" onClick={descargarPlantilla}>📄 Plantilla</button>
+              <button type="button" className="slds-button slds-button_neutral" onClick={() => inputArchivoRef.current?.click()}>⬆ Importar</button>
               <input ref={inputArchivoRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={importarExcel} />
             </>)}
-            <button className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
+            <button type="button" className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
           </div>
         </div>
 
         {error && <div className="slds-text-color_error slds-m-bottom_small" role="alert">⚠️ {error}</div>}
         {aviso && <div className="slds-text-color_success slds-m-bottom_small" role="status">✅ {aviso}</div>}
 
-        {/* Datos faltantes para Universo */}
         {baseParaUniverso && canEdit && (
-          <div className="slds-box slds-m-bottom_medium" style={{ borderLeft: '4px solid #2563eb', background: '#eff6ff' }}>
-            <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
-              <div>
-                <h3 className="slds-text-heading_small">Completar datos de Universo para <strong>{baseParaUniverso.empresa}</strong></h3>
-                <p className="slds-text-body_small slds-text-color_weak">Todos opcionales.</p>
-              </div>
-              <button className="slds-button slds-button_neutral" onClick={() => setBaseParaUniverso(null)}>Omitir</button>
-            </div>
-            <form onSubmit={guardarEnUniverso}>
-              <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end">
-                <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-                  <label className="slds-form-element__label">Rubro / Sector</label>
-                  <input className="slds-input" value={formUni.rubro} onChange={(e) => setFormUni((p) => ({ ...p, rubro: e.target.value }))} />
-                </div>
-                <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}>
-                  <label className="slds-form-element__label">Segmento</label>
-                  <div className="slds-select_container"><select className="slds-select" value={formUni.segmento} onChange={(e) => setFormUni((p) => ({ ...p, segmento: e.target.value }))}>
-                    <option value="">—</option><option>Privado</option><option>Gob.</option>
-                  </select></div>
-                </div>
-                <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-                  <label className="slds-form-element__label">Email</label>
-                  <input className="slds-input" type="email" value={formUni.email} onChange={(e) => setFormUni((p) => ({ ...p, email: e.target.value }))} />
-                </div>
-                <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-                  <label className="slds-form-element__label">Sitio Web</label>
-                  <input className="slds-input" value={formUni.sitio_web} onChange={(e) => setFormUni((p) => ({ ...p, sitio_web: e.target.value }))} placeholder="empresa.com" />
-                </div>
-                <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-                  <label className="slds-form-element__label">LinkedIn</label>
-                  <input className="slds-input" value={formUni.linkedin} onChange={(e) => setFormUni((p) => ({ ...p, linkedin: e.target.value }))} />
-                </div>
-                <div className="slds-col slds-grow-none" style={{ maxWidth: 160 }}>
-                  <label className="slds-form-element__label">Fecha 1er contacto</label>
-                  <input className="slds-input" type="date" value={formUni.fecha_contacto} onChange={(e) => setFormUni((p) => ({ ...p, fecha_contacto: e.target.value }))} />
-                </div>
-                <div className="slds-col slds-grow-none" style={{ maxWidth: 190 }}>
-                  <label className="slds-form-element__label">Status contacto</label>
-                  <div className="slds-select_container"><select className="slds-select" value={formUni.status_contacto} onChange={(e) => setFormUni((p) => ({ ...p, status_contacto: e.target.value }))}>
-                    {['Sin contacto','Contactado','Siguientes pasos','Primera reunión','Ganado','Perdido'].map((s) => <option key={s}>{s}</option>)}
-                  </select></div>
-                </div>
-                <div className="slds-col slds-grow-none">
-                  <button className="slds-button slds-button_brand" type="submit">Guardar en Universo</button>
-                </div>
-              </div>
-            </form>
-          </div>
+          <CompletarUniversoForm
+            baseParaUniverso={baseParaUniverso} formUni={formUni} setFormUni={setFormUni}
+            onSubmit={guardarEnUniverso} onOmitir={() => setBaseParaUniverso(null)}
+          />
         )}
 
-        {/* Métricas */}
         <div className="slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
           <div className="slds-col slds-size_1-of-3 slds-p-vertical_x-small">
             <div className="metric-card"><p className="metric-label">En proceso</p><p className="metric-value">{lista.length}</p></div>
           </div>
         </div>
 
-        {/* Globo: pendientes de Universo */}
         {pendientes.length > 0 && (
-          <div className="slds-box slds-m-bottom_medium" style={{ borderLeft: '4px solid #7c3aed', background: '#f5f0ff' }}>
-            <div className="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
-              <div className="slds-grid slds-grid_vertical-align-center" style={{ gap: 10 }}>
-                <span style={{ background: '#7c3aed', color: '#fff', borderRadius: 999, padding: '2px 11px', fontWeight: 700, fontSize: '0.85rem' }}>{pendientes.length}</span>
-                <strong>Nuevos prospectos de Universo</strong>
-                <span className="slds-text-color_weak slds-text-body_small">— Selecciona uno para completar sus datos</span>
-              </div>
-              <button className="slds-button slds-button_neutral" onClick={() => setMostrarPendientes((v) => !v)}>{mostrarPendientes ? 'Ocultar ▲' : 'Ver ▼'}</button>
-            </div>
-            {mostrarPendientes && (
-              <div className="slds-m-top_small" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {pendientes.map((p) => (
-                  <button key={p.id} className="slds-button slds-button_neutral"
-                    style={{ textAlign: 'left', borderColor: universoId === p.id ? '#7c3aed' : undefined, fontWeight: universoId === p.id ? 700 : undefined }}
-                    onClick={() => seleccionarPendiente(p)}>
-                    <strong>{p.empresa}</strong>{p.contacto_nombre && <> · {p.contacto_nombre}</>}{p.responsable && <> · {p.responsable}</>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <PendientesUniversoBanner
+            pendientes={pendientes} mostrar={mostrarPendientes} onToggleMostrar={() => setMostrarPendientes((v) => !v)}
+            universoId={universoId} onSeleccionar={seleccionarPendiente}
+          />
         )}
 
-        {/* Formulario */}
         {canEdit && (
-          <div className="slds-box slds-theme_default slds-m-bottom_medium">
-            <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
-              <div>
-                <h2 className="slds-text-heading_small">{editId ? 'Editar prospecto' : universoId ? 'Completar prospecto de Universo' : 'Nuevo prospecto activo'}</h2>
-                {universoId && <p className="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">Datos básicos precargados · da Agregar y luego agrega las reuniones desde la tabla</p>}
-              </div>
-              {(editId || universoId) && <button className="slds-button slds-button_neutral" onClick={() => { setForm(VACIO); setEditId(null); setUniversoId(null) }}>Cancelar</button>}
-            </div>
-            <form onSubmit={guardar}>
-              <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end">
-                <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
-                  <label className="slds-form-element__label">Empresa / Municipio *</label>
-                  <input className="slds-input" value={form.empresa} onChange={(e) => f({ empresa: e.target.value })} required />
-                </div>
-                <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}>
-                  <label className="slds-form-element__label">Tipo</label>
-                  <div className="slds-select_container"><select className="slds-select" value={form.tipo} onChange={(e) => f({ tipo: e.target.value })}>
-                    <option value="">—</option>{(opts.tipos || []).map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select></div>
-                </div>
-                <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-                  <label className="slds-form-element__label">Contacto principal</label>
-                  <input className="slds-input" value={form.contacto_nombre} onChange={(e) => f({ contacto_nombre: e.target.value })} />
-                </div>
-                <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}>
-                  <label className="slds-form-element__label">Teléfono</label>
-                  <input className="slds-input" value={form.telefono} onChange={(e) => f({ telefono: e.target.value })} />
-                </div>
-                <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
-                  <label className="slds-form-element__label">Responsable LCG</label>
-                  <input className="slds-input" value={form.responsable} onChange={(e) => f({ responsable: e.target.value })} />
-                </div>
-              </div>
-              <div className="slds-grid slds-gutters slds-m-top_small slds-grid_vertical-align-center">
-                <div>
-                  <button className="slds-button slds-button_brand" type="submit">{editId ? 'Guardar' : 'Agregar'}</button>
-                </div>
-              </div>
-            </form>
-          </div>
+          <ProspectoFormulario
+            form={form} f={f} opts={opts} editId={editId} universoId={universoId}
+            onSubmit={guardar}
+            onCancelar={() => { setForm(VACIO); setEditId(null); setUniversoId(null) }}
+          />
         )}
 
-        {/* Buscador */}
         <div className="slds-m-bottom_small" style={{ maxWidth: 340 }}>
-          <label className="slds-form-element__label">Buscar</label>
-          <input className="slds-input" placeholder="Empresa, contacto, responsable…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          <label className="slds-form-element__label" htmlFor="prospectos-busqueda">Buscar</label>
+          <input id="prospectos-busqueda" className="slds-input" placeholder="Empresa, contacto, responsable…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
 
-        {/* Tabla */}
-        <div className="slds-box slds-theme_default">
-          {(() => {
-            const q = busqueda.toLowerCase()
-            const listaMostrada = busqueda
-              ? lista.filter((r) => [r.empresa, r.tipo, r.contacto_nombre, r.telefono, r.responsable]
-                  .some((v) => (v || '').toLowerCase().includes(q)))
-              : lista
-            return (
-          <>
-          <h2 className="slds-text-heading_small slds-m-bottom_small">Prospectos ({listaMostrada.length}{busqueda ? ` de ${lista.length}` : ''})</h2>
-          {cargando ? <p className="slds-text-color_weak">Cargando…</p> : listaMostrada.length === 0 ? (
-            <p className="slds-text-color_weak">{busqueda ? 'Sin resultados para esa búsqueda.' : 'Sin prospectos aún.'}</p>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="slds-table slds-table_bordered slds-table_cell-buffer">
-                <thead>
-                  <tr className="slds-line-height_reset">
-                    <th>Empresa</th><th>Tipo</th><th>Contacto</th><th>Responsable</th>
-                    <th>Reuniones</th>
-                    {(canEdit || canDelete) && <th>Acciones</th>}
+        <ProspectosTabla
+          listaMostrada={listaMostrada} lista={lista} busqueda={busqueda} cargando={cargando}
+          canEdit={canEdit} canDelete={canDelete} colSpanTotal={colSpanTotal}
+          expandedId={expandedId} reuniones={reuniones} formReunion={formReunion} setFormReunion={setFormReunion}
+          guardandoReunion={guardandoReunion}
+          onEditar={editar} onEliminar={eliminar} onToggleReuniones={toggleReuniones}
+          onGuardarReunion={guardarReunion} onEliminarReunion={eliminarReunion}
+        />
+      </div>
+    </div>
+  )
+}
+
+function CompletarUniversoForm({ baseParaUniverso, formUni, setFormUni, onSubmit, onOmitir }) {
+  return (
+    <div className="slds-box slds-m-bottom_medium" style={{ borderLeft: '4px solid #2563eb', background: '#eff6ff' }}>
+      <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
+        <div>
+          <h3 className="slds-text-heading_small">Completar datos de Universo para <strong>{baseParaUniverso.empresa}</strong></h3>
+          <p className="slds-text-body_small slds-text-color_weak">Todos opcionales.</p>
+        </div>
+        <button type="button" className="slds-button slds-button_neutral" onClick={onOmitir}>Omitir</button>
+      </div>
+      <form onSubmit={onSubmit}>
+        <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end">
+          <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+            <label className="slds-form-element__label" htmlFor="uni-rubro">Rubro / Sector</label>
+            <input id="uni-rubro" className="slds-input" value={formUni.rubro} onChange={(e) => setFormUni((p) => ({ ...p, rubro: e.target.value }))} />
+          </div>
+          <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}>
+            <label className="slds-form-element__label" htmlFor="uni-segmento">Segmento</label>
+            <div className="slds-select_container"><select id="uni-segmento" className="slds-select" value={formUni.segmento} onChange={(e) => setFormUni((p) => ({ ...p, segmento: e.target.value }))}>
+              <option value="">—</option><option>Público</option><option>Privado</option>
+            </select></div>
+          </div>
+          <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+            <label className="slds-form-element__label" htmlFor="uni-email">Email</label>
+            <input id="uni-email" className="slds-input" type="email" value={formUni.email} onChange={(e) => setFormUni((p) => ({ ...p, email: e.target.value }))} />
+          </div>
+          <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+            <label className="slds-form-element__label" htmlFor="uni-sitio-web">Sitio Web</label>
+            <input id="uni-sitio-web" className="slds-input" value={formUni.sitio_web} onChange={(e) => setFormUni((p) => ({ ...p, sitio_web: e.target.value }))} placeholder="empresa.com" />
+          </div>
+          <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+            <label className="slds-form-element__label" htmlFor="uni-linkedin">LinkedIn</label>
+            <input id="uni-linkedin" className="slds-input" value={formUni.linkedin} onChange={(e) => setFormUni((p) => ({ ...p, linkedin: e.target.value }))} />
+          </div>
+          <div className="slds-col slds-grow-none" style={{ maxWidth: 160 }}>
+            <label className="slds-form-element__label" htmlFor="uni-fecha-contacto">Fecha 1er contacto</label>
+            <input id="uni-fecha-contacto" className="slds-input" type="date" value={formUni.fecha_contacto} onChange={(e) => setFormUni((p) => ({ ...p, fecha_contacto: e.target.value }))} />
+          </div>
+          <div className="slds-col slds-grow-none" style={{ maxWidth: 190 }}>
+            <label className="slds-form-element__label" htmlFor="uni-status-contacto">Status contacto</label>
+            <div className="slds-select_container"><select id="uni-status-contacto" className="slds-select" value={formUni.status_contacto} onChange={(e) => setFormUni((p) => ({ ...p, status_contacto: e.target.value }))}>
+              {['Sin contactar','Contactado','Siguientes pasos','Primera reunión','Ganado','Perdido'].map((s) => <option key={s}>{s}</option>)}
+            </select></div>
+          </div>
+          <div className="slds-col slds-grow-none">
+            <button className="slds-button slds-button_brand" type="submit">Guardar en Universo</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function PendientesUniversoBanner({ pendientes, mostrar, onToggleMostrar, universoId, onSeleccionar }) {
+  return (
+    <div className="slds-box slds-m-bottom_medium" style={{ borderLeft: '4px solid #7c3aed', background: '#f5f0ff' }}>
+      <div className="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+        <div className="slds-grid slds-grid_vertical-align-center" style={{ gap: 10 }}>
+          <span style={{ background: '#7c3aed', color: '#fff', borderRadius: 999, padding: '2px 11px', fontWeight: 700, fontSize: '0.85rem' }}>{pendientes.length}</span>
+          <strong>Nuevos prospectos de Universo</strong>
+          <span className="slds-text-color_weak slds-text-body_small">— Selecciona uno para completar sus datos</span>
+        </div>
+        <button type="button" className="slds-button slds-button_neutral" onClick={onToggleMostrar}>{mostrar ? 'Ocultar ▲' : 'Ver ▼'}</button>
+      </div>
+      {mostrar && (
+        <div className="slds-m-top_small" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {pendientes.map((p) => (
+            <button key={p.id} type="button" className="slds-button slds-button_neutral"
+              style={{ textAlign: 'left', borderColor: universoId === p.id ? '#7c3aed' : undefined, fontWeight: universoId === p.id ? 700 : undefined }}
+              onClick={() => onSeleccionar(p)}>
+              <strong>{p.empresa}</strong>{p.contacto_nombre && <> · {p.contacto_nombre}</>}{p.responsable && <> · {p.responsable}</>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ProspectoFormulario({ form, f, opts, editId, universoId, onSubmit, onCancelar }) {
+  return (
+    <div className="slds-box slds-theme_default slds-m-bottom_medium">
+      <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
+        <div>
+          <h2 className="slds-text-heading_small">{editId ? 'Editar prospecto' : universoId ? 'Completar prospecto de Universo' : 'Nuevo prospecto activo'}</h2>
+          {universoId && <p className="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">Datos básicos precargados · da Agregar y luego agrega las reuniones desde la tabla</p>}
+        </div>
+        {(editId || universoId) && <button type="button" className="slds-button slds-button_neutral" onClick={onCancelar}>Cancelar</button>}
+      </div>
+      <form onSubmit={onSubmit}>
+        <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end">
+          <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
+            <label className="slds-form-element__label" htmlFor="prospecto-empresa">Empresa / Municipio *</label>
+            <input id="prospecto-empresa" className="slds-input" value={form.empresa} onChange={(e) => f({ empresa: e.target.value })} required />
+          </div>
+          <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}>
+            <label className="slds-form-element__label" htmlFor="prospecto-tipo">Tipo</label>
+            <div className="slds-select_container"><select id="prospecto-tipo" className="slds-select" value={form.tipo} onChange={(e) => f({ tipo: e.target.value })}>
+              <option value="">—</option>{(opts.tipos || []).map((t) => <option key={t} value={t}>{t}</option>)}
+            </select></div>
+          </div>
+          <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+            <label className="slds-form-element__label" htmlFor="prospecto-contacto">Contacto principal</label>
+            <input id="prospecto-contacto" className="slds-input" value={form.contacto_nombre} onChange={(e) => f({ contacto_nombre: e.target.value })} />
+          </div>
+          <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}>
+            <label className="slds-form-element__label" htmlFor="prospecto-telefono">Teléfono 1</label>
+            <input id="prospecto-telefono" className="slds-input" value={form.telefono} onChange={(e) => f({ telefono: e.target.value })} />
+          </div>
+          <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}>
+            <label className="slds-form-element__label" htmlFor="prospecto-telefono2">Teléfono 2</label>
+            <input id="prospecto-telefono2" className="slds-input" value={form.telefono2} onChange={(e) => f({ telefono2: e.target.value })} />
+          </div>
+          <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+            <label className="slds-form-element__label" htmlFor="prospecto-responsable">Responsable LCG</label>
+            <div className="slds-select_container"><select id="prospecto-responsable" className="slds-select" value={form.responsable} onChange={(e) => f({ responsable: e.target.value })}>
+              <option value="">—</option>{(opts.responsables || []).map((r) => <option key={r} value={r}>{r}</option>)}
+            </select></div>
+          </div>
+        </div>
+        <div className="slds-grid slds-gutters slds-m-top_small slds-grid_vertical-align-center">
+          <div>
+            <button className="slds-button slds-button_brand" type="submit">{editId ? 'Guardar' : 'Agregar'}</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function ProspectosTabla({
+  listaMostrada, lista, busqueda, cargando, canEdit, canDelete, colSpanTotal,
+  expandedId, reuniones, formReunion, setFormReunion, guardandoReunion,
+  onEditar, onEliminar, onToggleReuniones, onGuardarReunion, onEliminarReunion,
+}) {
+  return (
+    <div className="slds-box slds-theme_default">
+      <h2 className="slds-text-heading_small slds-m-bottom_small">Prospectos ({listaMostrada.length}{busqueda ? ` de ${lista.length}` : ''})</h2>
+      {cargando ? <p className="slds-text-color_weak">Cargando…</p> : listaMostrada.length === 0 ? (
+        <p className="slds-text-color_weak">{busqueda ? 'Sin resultados para esa búsqueda.' : 'Sin prospectos aún.'}</p>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table className="slds-table slds-table_bordered slds-table_cell-buffer">
+            <thead>
+              <tr className="slds-line-height_reset">
+                <th>Empresa</th><th>Tipo</th><th>Contacto</th><th>Responsable</th>
+                <th>Reuniones</th>
+                {(canEdit || canDelete) && <th>Acciones</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {listaMostrada.map((r) => (
+                <>
+                  <tr key={r.id}>
+                    <td><strong>{r.empresa}</strong></td>
+                    <td>{r.tipo || '—'}</td>
+                    <td>
+                      {r.contacto_nombre || '—'}
+                      {r.telefono && <><br /><span className="slds-text-body_small">{r.telefono}</span></>}
+                      {r.telefono2 && <><br /><span className="slds-text-body_small">{r.telefono2}</span></>}
+                    </td>
+                    <td>{r.responsable || '—'}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="slds-button slds-button_neutral"
+                        style={{ fontSize: '0.8rem', padding: '3px 10px' }}
+                        onClick={() => onToggleReuniones(r.id)}>
+                        {Number(r.num_reuniones || 0)} {Number(r.num_reuniones || 0) === 1 ? 'reunión' : 'reuniones'} {expandedId === r.id ? '▲' : '▼'}
+                      </button>
+                    </td>
+                    {(canEdit || canDelete) && (
+                      <td>
+                        {canEdit && <><button type="button" className="slds-button slds-button_neutral" onClick={() => onEditar(r)}>Editar</button>{' '}</>}
+                        {canDelete && <button type="button" className="slds-button slds-button_text-destructive" onClick={() => onEliminar(r)}>Eliminar</button>}
+                      </td>
+                    )}
                   </tr>
-                </thead>
-                <tbody>
-                  {listaMostrada.map((r) => (
-                    <>
-                      <tr key={r.id}>
-                        <td><strong>{r.empresa}</strong></td>
-                        <td>{r.tipo || '—'}</td>
-                        <td>{r.contacto_nombre || '—'}{r.telefono && <><br /><span className="slds-text-body_small">{r.telefono}</span></>}</td>
-                        <td>{r.responsable || '—'}</td>
-                        <td>
-                          <button
-                            className="slds-button slds-button_neutral"
-                            style={{ fontSize: '0.8rem', padding: '3px 10px' }}
-                            onClick={() => toggleReuniones(r.id)}>
-                            {Number(r.num_reuniones || 0)} {Number(r.num_reuniones || 0) === 1 ? 'reunión' : 'reuniones'} {expandedId === r.id ? '▲' : '▼'}
-                          </button>
-                        </td>
-                        {(canEdit || canDelete) && (
-                          <td>
-                            {canEdit && <><button className="slds-button slds-button_neutral" onClick={() => editar(r)}>Editar</button>{' '}</>}
-                            {canDelete && <button className="slds-button slds-button_text-destructive" onClick={() => eliminar(r)}>Eliminar</button>}
-                          </td>
-                        )}
-                      </tr>
 
-                      {/* Sub-fila de reuniones */}
-                      {expandedId === r.id && (
-                        <tr key={`${r.id}-reuniones`}>
-                          <td colSpan={colSpanTotal} style={{ background: '#f8fafc', padding: '14px 20px', borderTop: '1px solid #e5e7eb' }}>
+                  {/* Sub-fila de reuniones */}
+                  {expandedId === r.id && (
+                    <tr key={`${r.id}-reuniones`}>
+                      <td colSpan={colSpanTotal} style={{ background: '#f8fafc', padding: '14px 20px', borderTop: '1px solid #e5e7eb' }}>
 
-                            {/* Lista de reuniones existentes */}
-                            {!reuniones[r.id]
-                              ? <p className="slds-text-color_weak slds-text-body_small">Cargando…</p>
-                              : reuniones[r.id].length === 0
-                                ? <p className="slds-text-color_weak slds-text-body_small slds-m-bottom_small">Sin reuniones registradas aún.</p>
-                                : (
-                                  <div style={{ marginBottom: 14 }}>
-                                    {reuniones[r.id].map((re) => (
-                                      <div key={re.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
-                                        <span style={{ minWidth: 90, fontWeight: 600, fontSize: '0.85rem', color: '#374151' }}>Reunión {re.numero}</span>
-                                        <span style={{ fontSize: '0.85rem' }}>{re.fecha}</span>
-                                        {re.status && (
-                                          <span className="role-badge" style={{ background: STATUS_COLOR[re.status] || '#6b7280', color: '#fff', fontSize: '0.72rem' }}>{re.status}</span>
-                                        )}
-                                        <span style={{ flex: 1, color: '#4b5563', fontSize: '0.85rem' }}>{re.observaciones || ''}</span>
-                                        {canDelete && (
-                                          <button className="slds-button slds-button_text-destructive" style={{ fontSize: '0.78rem', padding: '2px 8px' }} onClick={() => eliminarReunion(r.id, re.id)}>Eliminar</button>
-                                        )}
-                                      </div>
-                                    ))}
+                        {/* Lista de reuniones existentes */}
+                        {!reuniones[r.id]
+                          ? <p className="slds-text-color_weak slds-text-body_small">Cargando…</p>
+                          : reuniones[r.id].length === 0
+                            ? <p className="slds-text-color_weak slds-text-body_small slds-m-bottom_small">Sin reuniones registradas aún.</p>
+                            : (
+                              <div style={{ marginBottom: 14 }}>
+                                {reuniones[r.id].map((re) => (
+                                  <div key={re.id} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '6px 0', borderBottom: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
+                                    <span style={{ minWidth: 90, fontWeight: 600, fontSize: '0.85rem', color: '#374151' }}>Reunión {re.numero}</span>
+                                    <span style={{ fontSize: '0.85rem' }}>{re.fecha}</span>
+                                    {re.status && (
+                                      <span className="role-badge" style={{ background: STATUS_COLOR[re.status] || '#6b7280', color: '#fff', fontSize: '0.75rem' }}>{re.status}</span>
+                                    )}
+                                    <span style={{ flex: 1, color: '#4b5563', fontSize: '0.85rem' }}>{re.observaciones || ''}</span>
+                                    {canDelete && (
+                                      <button type="button" className="slds-button slds-button_text-destructive" style={{ fontSize: '0.78rem', padding: '2px 8px' }} onClick={() => onEliminarReunion(r.id, re.id)}>Eliminar</button>
+                                    )}
                                   </div>
-                                )}
-
-                            {/* Form agregar reunión */}
-                            {canEdit && (
-                              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', paddingTop: 8 }}>
-                                <div>
-                                  <label style={{ fontSize: '0.78rem', display: 'block', marginBottom: 2, color: '#374151' }}>Fecha *</label>
-                                  <input type="date" className="slds-input" style={{ maxWidth: 150 }}
-                                    value={formReunion.fecha} onChange={(e) => setFormReunion((p) => ({ ...p, fecha: e.target.value }))} />
-                                </div>
-                                <div>
-                                  <label style={{ fontSize: '0.78rem', display: 'block', marginBottom: 2, color: '#374151' }}>Status</label>
-                                  <div className="slds-select_container" style={{ maxWidth: 150 }}>
-                                    <select className="slds-select" value={formReunion.status} onChange={(e) => setFormReunion((p) => ({ ...p, status: e.target.value }))}>
-                                      <option value="">—</option>
-                                      {STATUS_REUNION.map((s) => <option key={s}>{s}</option>)}
-                                    </select>
-                                  </div>
-                                </div>
-                                <div style={{ flex: 1, minWidth: 180 }}>
-                                  <label style={{ fontSize: '0.78rem', display: 'block', marginBottom: 2, color: '#374151' }}>Observaciones</label>
-                                  <input className="slds-input" value={formReunion.observaciones}
-                                    onChange={(e) => setFormReunion((p) => ({ ...p, observaciones: e.target.value }))}
-                                    placeholder="Resultado, acuerdos…" />
-                                </div>
-                                <button className="slds-button slds-button_brand" style={{ whiteSpace: 'nowrap' }}
-                                  onClick={() => guardarReunion(r.id)}
-                                  disabled={!formReunion.fecha || guardandoReunion}>
-                                  + Agregar reunión
-                                </button>
+                                ))}
                               </div>
                             )}
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          </>
-            )
-          })()}
+
+                        {/* Form agregar reunión */}
+                        {canEdit && (
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', paddingTop: 8 }}>
+                            <div>
+                              <label htmlFor={`reunion-fecha-${r.id}`} style={{ fontSize: '0.78rem', display: 'block', marginBottom: 2, color: '#374151' }}>Fecha *</label>
+                              <input id={`reunion-fecha-${r.id}`} type="date" className="slds-input" style={{ maxWidth: 150 }}
+                                value={formReunion.fecha} onChange={(e) => setFormReunion((p) => ({ ...p, fecha: e.target.value }))} />
+                            </div>
+                            <div>
+                              <label htmlFor={`reunion-status-${r.id}`} style={{ fontSize: '0.78rem', display: 'block', marginBottom: 2, color: '#374151' }}>Status</label>
+                              <div className="slds-select_container" style={{ maxWidth: 150 }}>
+                                <select id={`reunion-status-${r.id}`} className="slds-select" value={formReunion.status} onChange={(e) => setFormReunion((p) => ({ ...p, status: e.target.value }))}>
+                                  <option value="">—</option>
+                                  {STATUS_REUNION.map((s) => <option key={s}>{s}</option>)}
+                                </select>
+                              </div>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 180 }}>
+                              <label htmlFor={`reunion-obs-${r.id}`} style={{ fontSize: '0.78rem', display: 'block', marginBottom: 2, color: '#374151' }}>Observaciones</label>
+                              <input id={`reunion-obs-${r.id}`} className="slds-input" value={formReunion.observaciones}
+                                onChange={(e) => setFormReunion((p) => ({ ...p, observaciones: e.target.value }))}
+                                placeholder="Resultado, acuerdos…" />
+                            </div>
+                            <button type="button" className="slds-button slds-button_brand" style={{ whiteSpace: 'nowrap' }}
+                              onClick={() => onGuardarReunion(r.id)}
+                              disabled={!formReunion.fecha || guardandoReunion}>
+                              + Agregar reunión
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
+      )}
     </div>
   )
 }

@@ -50,7 +50,7 @@ export default function ConfiguracionVentas() {
               <Link to="/inicio" className="dash-back">← Inicio</Link>
               <h1 className="dash-greeting">Configuración de ventas</h1>
             </div>
-            <button className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
+            <button type="button" className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
           </div>
           <div className="slds-box slds-theme_default">
             <h2 className="slds-text-heading_small slds-m-bottom_x-small">Sin acceso</h2>
@@ -73,7 +73,7 @@ export default function ConfiguracionVentas() {
               Catálogo y tabuladores · Tu facultad: {canEdit ? 'vista y modificación' : 'solo vista'}
             </p>
           </div>
-          <button className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
+          <button type="button" className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
         </div>
 
         {error && <div className="slds-text-color_error slds-m-bottom_small" role="alert">⚠️ {error}</div>}
@@ -83,10 +83,10 @@ export default function ConfiguracionVentas() {
           <ul className="slds-tabs_default__nav" role="tablist">
             {['productos', 'clientes', 'unidades'].filter((t) => t !== 'clientes' || perms.facultades.clientesVer).map((t) => (
               <li key={t} className={'slds-tabs_default__item' + (tab === t ? ' slds-is-active' : '')} role="presentation">
-                <a className="slds-tabs_default__link" href={'#' + t} role="tab"
-                   onClick={(e) => { e.preventDefault(); setTab(t) }}>
+                <button type="button" className="slds-tabs_default__link" role="tab"
+                   onClick={() => setTab(t)}>
                   {t === 'productos' ? 'Productos / Servicios' : t === 'clientes' ? 'Clientes' : 'Unidades'}
-                </a>
+                </button>
               </li>
             ))}
           </ul>
@@ -135,20 +135,21 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
     <div className="slds-box slds-theme_default">
       {canEdit && (
         <form className="slds-grid slds-gutters slds-grid_vertical-align-end slds-m-bottom_medium" onSubmit={crear}>
-          <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Servicio</label>
-            <div className="slds-select_container"><select className="slds-select" value={form.servicio} onChange={(e) => setForm({ ...form, servicio: e.target.value })}>
+          <div className="slds-col slds-grow-none"><label className="slds-form-element__label" htmlFor="unidad-servicio">Servicio</label>
+            <div className="slds-select_container"><select id="unidad-servicio" className="slds-select" value={form.servicio} onChange={(e) => setForm({ ...form, servicio: e.target.value })}>
               {CATALOGO_SERVICIOS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select></div></div>
-          <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Nombre corto</label>
-            <input className="slds-input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Ej. Caja" required /></div>
-          <div className="slds-col"><label className="slds-form-element__label">Nombre largo</label>
-            <input className="slds-input" value={form.nombre_largo} onChange={(e) => setForm({ ...form, nombre_largo: e.target.value })} placeholder="Ej. Módulo de Caja Registradora" /></div>
-          <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Tipo</label>
-            <div className="slds-select_container"><select className="slds-select" value={form.abreviatura} onChange={(e) => setForm({ ...form, abreviatura: e.target.value })}>
+          <div className="slds-col slds-grow-none"><label className="slds-form-element__label" htmlFor="unidad-nombre">Nombre corto</label>
+            <input id="unidad-nombre" className="slds-input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Ej. Caja" required /></div>
+          <div className="slds-col"><label className="slds-form-element__label" htmlFor="unidad-nombre-largo">Nombre largo</label>
+            <input id="unidad-nombre-largo" className="slds-input" value={form.nombre_largo} onChange={(e) => setForm({ ...form, nombre_largo: e.target.value })} placeholder="Ej. Módulo de Caja Registradora" /></div>
+          <div className="slds-col slds-grow-none"><label className="slds-form-element__label" htmlFor="unidad-tipo">Tipo</label>
+            <div className="slds-select_container"><select id="unidad-tipo" className="slds-select" value={form.abreviatura} onChange={(e) => setForm({ ...form, abreviatura: e.target.value })}>
               <option value="">— Elegir —</option>
               <option value="Módulo">Módulo</option>
               <option value="Unidades">Unidades</option>
-              <option value="Único">Único</option>
+              <option value="Único por piezas">Único por piezas</option>
+              <option value="Único por Unidad">Único por Unidad</option>
             </select></div></div>
           <div className="slds-col slds-grow-none"><button className="slds-button slds-button_brand" type="submit">Agregar</button></div>
         </form>
@@ -161,28 +162,29 @@ function UnidadesTab({ unidades, setUnidades, canEdit, ok, fail }) {
             <tr key={u.id}>
               {editId === u.id ? (
                 <>
-                  <td><div className="slds-select_container"><select className="slds-select" value={editForm.servicio || ''} onChange={(e) => setEditForm({ ...editForm, servicio: e.target.value })}>
+                  <td><div className="slds-select_container"><select aria-label="Servicio" className="slds-select" value={editForm.servicio || ''} onChange={(e) => setEditForm({ ...editForm, servicio: e.target.value })}>
                     <option value="">—</option>
                     {CATALOGO_SERVICIOS.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select></div></td>
-                  <td><input className="slds-input" value={editForm.nombre || ''} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} /></td>
-                  <td><input className="slds-input" value={editForm.nombre_largo || ''} onChange={(e) => setEditForm({ ...editForm, nombre_largo: e.target.value })} /></td>
-                  <td><div className="slds-select_container"><select className="slds-select" value={editForm.abreviatura || ''} onChange={(e) => setEditForm({ ...editForm, abreviatura: e.target.value })}>
+                  <td><input aria-label="Nombre corto" className="slds-input" value={editForm.nombre || ''} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} /></td>
+                  <td><input aria-label="Nombre largo" className="slds-input" value={editForm.nombre_largo || ''} onChange={(e) => setEditForm({ ...editForm, nombre_largo: e.target.value })} /></td>
+                  <td><div className="slds-select_container"><select aria-label="Tipo" className="slds-select" value={editForm.abreviatura || ''} onChange={(e) => setEditForm({ ...editForm, abreviatura: e.target.value })}>
                     <option value="">— Elegir —</option>
                     <option value="Módulo">Módulo</option>
                     <option value="Unidades">Unidades</option>
-                    <option value="Único">Único</option>
+                    <option value="Único por piezas">Único por piezas</option>
+                    <option value="Único por Unidad">Único por Unidad</option>
                   </select></div></td>
-                  <td><button className="slds-button slds-button_brand" onClick={() => guardar(u.id)}>Guardar</button>{' '}
-                      <button className="slds-button slds-button_neutral" onClick={() => setEditId(null)}>Cancelar</button></td>
+                  <td><button type="button" className="slds-button slds-button_brand" onClick={() => guardar(u.id)}>Guardar</button>{' '}
+                      <button type="button" className="slds-button slds-button_neutral" onClick={() => setEditId(null)}>Cancelar</button></td>
                 </>
               ) : (
                 <>
                   <td>{u.servicio ? <span className="role-badge role-admin">{u.servicio}</span> : '—'}</td>
                   <td>{u.nombre}</td><td>{u.nombre_largo || '—'}</td><td>{u.abreviatura || '—'}</td>
                   {canEdit && <td>
-                    <button className="slds-button slds-button_neutral" onClick={() => { setEditId(u.id); setEditForm(u) }}>Editar</button>{' '}
-                    <button className="slds-button slds-button_text-destructive" onClick={() => eliminar(u)}>Eliminar</button>
+                    <button type="button" className="slds-button slds-button_neutral" onClick={() => { setEditId(u.id); setEditForm(u) }}>Editar</button>{' '}
+                    <button type="button" className="slds-button slds-button_text-destructive" onClick={() => eliminar(u)}>Eliminar</button>
                   </td>}
                 </>
               )}
@@ -223,12 +225,12 @@ function ClientesTab({ clientes, setClientes, canEdit, ok, fail }) {
     <div className="slds-box slds-theme_default">
       {canEdit && (
         <form className="slds-grid slds-gutters slds-grid_vertical-align-end slds-m-bottom_medium" onSubmit={crear}>
-          <div className="slds-col"><label className="slds-form-element__label">Nombre</label>
-            <input className="slds-input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required /></div>
-          <div className="slds-col"><label className="slds-form-element__label">Email</label>
-            <input className="slds-input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-          <div className="slds-col"><label className="slds-form-element__label">Teléfono</label>
-            <input className="slds-input" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} /></div>
+          <div className="slds-col"><label className="slds-form-element__label" htmlFor="cliente-nombre">Nombre</label>
+            <input id="cliente-nombre" className="slds-input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} required /></div>
+          <div className="slds-col"><label className="slds-form-element__label" htmlFor="cliente-email">Email</label>
+            <input id="cliente-email" className="slds-input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+          <div className="slds-col"><label className="slds-form-element__label" htmlFor="cliente-telefono">Teléfono</label>
+            <input id="cliente-telefono" className="slds-input" value={form.telefono} onChange={(e) => setForm({ ...form, telefono: e.target.value })} /></div>
           <div className="slds-col slds-grow-none"><button className="slds-button slds-button_brand" type="submit">Agregar</button></div>
         </form>
       )}
@@ -240,18 +242,18 @@ function ClientesTab({ clientes, setClientes, canEdit, ok, fail }) {
             <tr key={c.id}>
               {editId === c.id ? (
                 <>
-                  <td><input className="slds-input" value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} /></td>
-                  <td><input className="slds-input" value={editForm.email || ''} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></td>
-                  <td><input className="slds-input" value={editForm.telefono || ''} onChange={(e) => setEditForm({ ...editForm, telefono: e.target.value })} /></td>
-                  <td><button className="slds-button slds-button_brand" onClick={() => guardar(c.id)}>Guardar</button>{' '}
-                      <button className="slds-button slds-button_neutral" onClick={() => setEditId(null)}>Cancelar</button></td>
+                  <td><input aria-label="Nombre" className="slds-input" value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} /></td>
+                  <td><input aria-label="Email" className="slds-input" value={editForm.email || ''} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></td>
+                  <td><input aria-label="Teléfono" className="slds-input" value={editForm.telefono || ''} onChange={(e) => setEditForm({ ...editForm, telefono: e.target.value })} /></td>
+                  <td><button type="button" className="slds-button slds-button_brand" onClick={() => guardar(c.id)}>Guardar</button>{' '}
+                      <button type="button" className="slds-button slds-button_neutral" onClick={() => setEditId(null)}>Cancelar</button></td>
                 </>
               ) : (
                 <>
                   <td>{c.nombre}</td><td>{c.email || '—'}</td><td>{c.telefono || '—'}</td>
                   {canEdit && <td>
-                    <button className="slds-button slds-button_neutral" onClick={() => { setEditId(c.id); setEditForm(c) }}>Editar</button>{' '}
-                    <button className="slds-button slds-button_text-destructive" onClick={() => eliminar(c)}>Eliminar</button>
+                    <button type="button" className="slds-button slds-button_neutral" onClick={() => { setEditId(c.id); setEditForm(c) }}>Editar</button>{' '}
+                    <button type="button" className="slds-button slds-button_text-destructive" onClick={() => eliminar(c)}>Eliminar</button>
                   </td>}
                 </>
               )}
@@ -265,10 +267,10 @@ function ClientesTab({ clientes, setClientes, canEdit, ok, fail }) {
 
 /* --------------------------- Productos + tipos --------------------------- */
 const CATALOGO_SERVICIOS = ['SIAG', 'SITEM', 'SIBOP']
+const PRODUCTO_VACIO = { nombre: CATALOGO_SERVICIOS[0], tipo: 'producto', sector: '', unidad_id: '' }
 
 function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) {
-  const VACIO = { nombre: CATALOGO_SERVICIOS[0], tipo: 'producto', sector: '', unidad_id: '' }
-  const [form, setForm] = useState(VACIO)
+  const [form, setForm] = useState(PRODUCTO_VACIO)
   const [filtros, setFiltros] = useState([])
   const unidadNombre = (id) => unidades.find((u) => u.id === id)?.nombre || '—'
 
@@ -281,7 +283,7 @@ function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) 
     try {
       const { producto } = await catalogoApi.createProducto(form)
       setProductos((p) => [...p, { ...producto, tipos_venta: [] }])
-      setForm(VACIO); ok('Producto creado.')
+      setForm(PRODUCTO_VACIO); ok('Producto creado.')
     } catch (e) { fail(e) }
   }
   async function eliminar(p) {
@@ -301,19 +303,19 @@ function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) 
         <div className="slds-box slds-theme_default slds-m-bottom_medium">
           <h2 className="slds-text-heading_small slds-m-bottom_small">Nuevo producto / servicio</h2>
           <form className="slds-grid slds-gutters slds-grid_vertical-align-end" onSubmit={crear}>
-            <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Servicio</label>
-              <div className="slds-select_container"><select className="slds-select" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value, unidad_id: '' })}>
+            <div className="slds-col slds-grow-none"><label className="slds-form-element__label" htmlFor="producto-servicio">Servicio</label>
+              <div className="slds-select_container"><select id="producto-servicio" className="slds-select" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value, unidad_id: '' })}>
                 {CATALOGO_SERVICIOS.map((s) => <option key={s} value={s}>{s}</option>)}
               </select></div></div>
-            <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Sector</label>
-              <div className="slds-select_container"><select className="slds-select" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })}>
+            <div className="slds-col slds-grow-none"><label className="slds-form-element__label" htmlFor="producto-sector">Sector</label>
+              <div className="slds-select_container"><select id="producto-sector" className="slds-select" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })}>
                 <option value="">— Elegir —</option>
                 <option value="Público">Público</option>
                 <option value="Privado">Privado</option>
               </select></div></div>
-            <div className="slds-col slds-grow-none"><label className="slds-form-element__label">Tipo</label>
-              <div className="slds-select_container"><select className="slds-select" value={form.unidad_id} onChange={(e) => setForm({ ...form, unidad_id: e.target.value })}>
-                <option value="">—</option>{unidades.filter((u) => u.servicio === form.nombre).map((u) => <option key={u.id} value={u.id}>{u.nombre}</option>)}</select></div></div>
+            <div className="slds-col slds-grow-none"><label className="slds-form-element__label" htmlFor="producto-unidad">Tipo</label>
+              <div className="slds-select_container"><select id="producto-unidad" className="slds-select" value={form.unidad_id} onChange={(e) => setForm({ ...form, unidad_id: e.target.value })}>
+                <option value="">—</option>{unidades.reduce((acc, u) => { if (u.servicio === form.nombre) acc.push(<option key={u.id} value={u.id}>{u.nombre}</option>); return acc }, [])}</select></div></div>
             <div className="slds-col slds-grow-none"><button className="slds-button slds-button_brand" type="submit">Agregar Servicio</button></div>
           </form>
         </div>
@@ -345,7 +347,7 @@ function ProductosTab({ productos, setProductos, unidades, canEdit, ok, fail }) 
               {p.sector && <span className="role-badge role-superuser">{p.sector}</span>}{' '}
               <span className="slds-text-color_weak slds-text-body_small">tipo: {unidadNombre(p.unidad_id)}</span>
             </div>
-            {canEdit && <button className="slds-button slds-button_text-destructive" onClick={() => eliminar(p)}>Eliminar producto</button>}
+            {canEdit && <button type="button" className="slds-button slds-button_text-destructive" onClick={() => eliminar(p)}>Eliminar producto</button>}
           </div>
           <TiposVenta producto={p} canEdit={canEdit} unidades={unidades} setTipos={setTipos} ok={ok} fail={fail} />
         </div>
@@ -362,7 +364,10 @@ const rangoLabel = (t) => `${t.unidades_min} – ${t.unidades_max ?? '∞'} unid
 // (mínimo) y precio_lista (referencia), por unidad/mes. El rango se elige solo al
 // cotizar según las unidades; los años (1-6) y el precio (en banda) también al cotizar.
 function TiposVenta({ producto, canEdit, unidades, setTipos, ok, fail }) {
-  const esModulo = unidades.find((u) => u.id === producto.unidad_id)?.abreviatura === 'Módulo'
+  const abreviatura = unidades.find((u) => u.id === producto.unidad_id)?.abreviatura
+  const esModulo = abreviatura === 'Módulo'
+  const esUnicoUnidad = abreviatura === 'Único por Unidad'
+  const sinRango = esModulo || esUnicoUnidad
   const [form, setForm] = useState(TIPO_FORM_VACIO)
   const [editId, setEditId] = useState(null)
 
@@ -370,8 +375,8 @@ function TiposVenta({ producto, canEdit, unidades, setTipos, ok, fail }) {
     e.preventDefault()
     const payload = {
       nombre: form.nombre,
-      unidades_min: esModulo ? 1 : Number(form.unidades_min),
-      unidades_max: esModulo ? null : (form.unidades_max === '' ? null : Number(form.unidades_max)),
+      unidades_min: sinRango ? 1 : Number(form.unidades_min),
+      unidades_max: sinRango ? null : (form.unidades_max === '' ? null : Number(form.unidades_max)),
       precio_piso: Number(form.precio_piso),
       precio_lista: Number(form.precio_lista),
     }
@@ -395,40 +400,42 @@ function TiposVenta({ producto, canEdit, unidades, setTipos, ok, fail }) {
     setForm({ nombre: t.nombre, unidades_min: t.unidades_min, unidades_max: t.unidades_max ?? '', precio_piso: t.precio_piso, precio_lista: t.precio_lista })
   }
 
-  const tipos = [...(producto.tipos_venta || [])].sort((a, b) => a.unidades_min - b.unidades_min)
+  const tipos = (producto.tipos_venta || []).toSorted((a, b) => a.unidades_min - b.unidades_min)
 
   return (
     <div className="slds-box slds-theme_shade slds-m-top_x-small" style={{ background: '#fafafc', borderRadius: 12 }}>
-      <p className="slds-text-body_small slds-text-color_weak slds-m-bottom_x-small">{esModulo ? 'Precio anual del módulo (piso y lista)' : 'Rangos de precio (por unidad/mes; el rango se elige solo al cotizar según las unidades)'}</p>
+      <p className="slds-text-body_small slds-text-color_weak slds-m-bottom_x-small">
+        {esModulo ? 'Precio anual del módulo (piso y lista)' : esUnicoUnidad ? 'Precio único, pago único sin importar piezas (piso y lista)' : 'Rangos de precio (por unidad/mes; el rango se elige solo al cotizar según las unidades)'}
+      </p>
       {tipos.length === 0 && <p className="slds-text-body_small slds-text-color_weak">Sin rangos. Agrega al menos uno.</p>}
       {tipos.map((t) => (
         <div key={t.id} className="activity-row">
           <div>
             <span className="activity-name">{t.nombre}</span>{' '}
-            {!esModulo && <span className="role-badge role-viewer">{rangoLabel(t)}</span>}{' '}
+            {!sinRango && <span className="role-badge role-viewer">{rangoLabel(t)}</span>}{' '}
           </div>
           <div>
             <span className="activity-amount">piso ${Number(t.precio_piso).toLocaleString()} · lista ${Number(t.precio_lista).toLocaleString()}</span>
-            {canEdit && <>{' '}<button className="slds-button slds-button_neutral" onClick={() => editar(t)}>Editar</button>{' '}
-              <button className="slds-button slds-button_text-destructive" onClick={() => eliminar(t)}>×</button></>}
+            {canEdit && <>{' '}<button type="button" className="slds-button slds-button_neutral" onClick={() => editar(t)}>Editar</button>{' '}
+              <button type="button" className="slds-button slds-button_text-destructive" onClick={() => eliminar(t)}>×</button></>}
           </div>
         </div>
       ))}
 
       {canEdit && (
         <form className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end slds-m-top_small" onSubmit={enviar}>
-          <div className="slds-col slds-size_1-of-4"><label className="slds-form-element__label">Nombre</label>
-            <input className="slds-input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder={esModulo ? 'Ej. Módulo base' : 'Ej. 10-20 unidades'} required /></div>
-          {!esModulo && <>
-            <div className="slds-col slds-grow-none" style={{ maxWidth: 100 }}><label className="slds-form-element__label">Unid. mín</label>
-              <input className="slds-input" type="number" min="1" step="1" value={form.unidades_min} onChange={(e) => setForm({ ...form, unidades_min: e.target.value })} required /></div>
-            <div className="slds-col slds-grow-none" style={{ maxWidth: 110 }}><label className="slds-form-element__label">Unid. máx</label>
-              <input className="slds-input" type="number" min="1" step="1" value={form.unidades_max} onChange={(e) => setForm({ ...form, unidades_max: e.target.value })} placeholder="sin tope" /></div>
+          <div className="slds-col slds-size_1-of-4"><label className="slds-form-element__label" htmlFor={`tipo-nombre-${producto.id}`}>Nombre</label>
+            <input id={`tipo-nombre-${producto.id}`} className="slds-input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder={esModulo ? 'Ej. Módulo base' : esUnicoUnidad ? 'Ej. Precio único' : 'Ej. 10-20 unidades'} required /></div>
+          {!sinRango && <>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 100 }}><label className="slds-form-element__label" htmlFor={`tipo-unid-min-${producto.id}`}>Unid. mín</label>
+              <input id={`tipo-unid-min-${producto.id}`} className="slds-input" type="number" min="1" step="1" value={form.unidades_min} onChange={(e) => setForm({ ...form, unidades_min: e.target.value })} required /></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 110 }}><label className="slds-form-element__label" htmlFor={`tipo-unid-max-${producto.id}`}>Unid. máx</label>
+              <input id={`tipo-unid-max-${producto.id}`} className="slds-input" type="number" min="1" step="1" value={form.unidades_max} onChange={(e) => setForm({ ...form, unidades_max: e.target.value })} placeholder="sin tope" /></div>
           </>}
-          <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}><label className="slds-form-element__label">Precio piso</label>
-            <input className="slds-input" type="number" min="0" step="0.01" value={form.precio_piso} onChange={(e) => setForm({ ...form, precio_piso: e.target.value })} required /></div>
-          <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}><label className="slds-form-element__label">Precio lista</label>
-            <input className="slds-input" type="number" min="0" step="0.01" value={form.precio_lista} onChange={(e) => setForm({ ...form, precio_lista: e.target.value })} required /></div>
+          <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}><label className="slds-form-element__label" htmlFor={`tipo-precio-piso-${producto.id}`}>Precio piso</label>
+            <input id={`tipo-precio-piso-${producto.id}`} className="slds-input" type="number" min="0" step="0.01" value={form.precio_piso} onChange={(e) => setForm({ ...form, precio_piso: e.target.value })} required /></div>
+          <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}><label className="slds-form-element__label" htmlFor={`tipo-precio-lista-${producto.id}`}>Precio lista</label>
+            <input id={`tipo-precio-lista-${producto.id}`} className="slds-input" type="number" min="0" step="0.01" value={form.precio_lista} onChange={(e) => setForm({ ...form, precio_lista: e.target.value })} required /></div>
           <div className="slds-col slds-grow-none">
             <button className="slds-button slds-button_brand" type="submit">{editId ? 'Guardar' : 'Agregar'}</button>
             {editId && <button type="button" className="slds-button slds-button_neutral" onClick={() => { setForm(TIPO_FORM_VACIO); setEditId(null) }}>Cancelar</button>}

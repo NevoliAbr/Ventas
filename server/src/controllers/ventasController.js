@@ -56,12 +56,20 @@ async function construirLineas(items) {
       }
     }
 
-    const esModulo = mapaUnidades[prod.unidad_id]?.abreviatura === 'Módulo'
+    const abreviatura = mapaUnidades[prod.unidad_id]?.abreviatura
+    const esModulo = abreviatura === 'Módulo'
+    const esUnicoUnidad = abreviatura === 'Único por Unidad'
+    const esUnicoPiezas = abreviatura === 'Único por piezas'
     let ingreso_mensual, ingreso_anual, subtotal
     if (esModulo) {
       ingreso_anual = round2(precio)
       ingreso_mensual = round2(precio / 12)
       subtotal = round2(precio * anios)
+    } else if (esUnicoUnidad || esUnicoPiezas) {
+      // Pago único: no es recurrente, no se multiplica por meses ni por años.
+      ingreso_mensual = null
+      ingreso_anual = null
+      subtotal = esUnicoUnidad ? round2(precio) : round2(precio * cantidad)
     } else {
       ingreso_mensual = round2(precio * cantidad)
       ingreso_anual = round2(ingreso_mensual * 12)

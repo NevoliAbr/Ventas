@@ -43,19 +43,16 @@ export default function AuthPage() {
               }
               role="presentation"
             >
-              <a
+              <button
+                type="button"
                 className="slds-tabs_default__link"
-                href="#login"
                 role="tab"
                 aria-selected={tab === 'login'}
                 tabIndex={tab === 'login' ? 0 : -1}
-                onClick={(e) => {
-                  e.preventDefault()
-                  setTab('login')
-                }}
+                onClick={() => setTab('login')}
               >
                 Iniciar sesión
-              </a>
+              </button>
             </li>
             <li
               className={
@@ -63,19 +60,16 @@ export default function AuthPage() {
               }
               role="presentation"
             >
-              <a
+              <button
+                type="button"
                 className="slds-tabs_default__link"
-                href="#register"
                 role="tab"
                 aria-selected={tab === 'register'}
                 tabIndex={tab === 'register' ? 0 : -1}
-                onClick={(e) => {
-                  e.preventDefault()
-                  setTab('register')
-                }}
+                onClick={() => setTab('register')}
               >
                 Crear cuenta
-              </a>
+              </button>
             </li>
           </ul>
 

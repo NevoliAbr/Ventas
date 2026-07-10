@@ -3,7 +3,7 @@ import { getPool } from './mysql.js'
 import { randomUUID } from 'node:crypto'
 
 const CAMPOS = [
-  'empresa', 'tipo', 'contacto_nombre', 'telefono', 'responsable',
+  'empresa', 'tipo', 'contacto_nombre', 'telefono', 'telefono2', 'responsable',
   'fecha_1ra_reunion', 'status_1ra_reunion', 'obs_1ra_reunion',
   'fecha_2da_reunion', 'status_2da_reunion', 'obs_2da_reunion',
   'pide_cotizacion', 'pasa_forecast',
@@ -12,7 +12,7 @@ const CAMPOS = [
 function valores(o) {
   return [
     o.empresa,
-    o.tipo ?? null, o.contacto_nombre ?? null, o.telefono ?? null, o.responsable ?? null,
+    o.tipo ?? null, o.contacto_nombre ?? null, o.telefono ?? null, o.telefono2 ?? null, o.responsable ?? null,
     o.fecha_1ra_reunion ?? null, o.status_1ra_reunion ?? null, o.obs_1ra_reunion ?? null,
     o.fecha_2da_reunion ?? null, o.status_2da_reunion ?? null, o.obs_2da_reunion ?? null,
     o.pide_cotizacion ? 1 : 0, o.pasa_forecast ? 1 : 0,

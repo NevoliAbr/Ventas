@@ -3,7 +3,7 @@ import { getPool, sql } from './mssql.js'
 import { randomUUID } from 'node:crypto'
 
 const CAMPOS = [
-  'empresa', 'rubro', 'segmento', 'contacto_nombre', 'email', 'telefono',
+  'empresa', 'rubro', 'segmento', 'contacto_nombre', 'email', 'telefono', 'telefono2',
   'sitio_web', 'linkedin', 'tipo', 'responsable', 'fecha_contacto',
   'status_contacto', 'etapa_pipeline',
 ]
@@ -16,12 +16,13 @@ function bind(reqst, o) {
     .input('contacto_nombre', sql.NVarChar, o.contacto_nombre ?? null)
     .input('email', sql.NVarChar, o.email ?? null)
     .input('telefono', sql.NVarChar, o.telefono ?? null)
+    .input('telefono2', sql.NVarChar, o.telefono2 ?? null)
     .input('sitio_web', sql.NVarChar, o.sitio_web ?? null)
     .input('linkedin', sql.NVarChar, o.linkedin ?? null)
     .input('tipo', sql.NVarChar, o.tipo ?? null)
     .input('responsable', sql.NVarChar, o.responsable ?? null)
     .input('fecha_contacto', sql.NVarChar, o.fecha_contacto ?? null)
-    .input('status_contacto', sql.NVarChar, o.status_contacto ?? 'Sin contacto')
+    .input('status_contacto', sql.NVarChar, o.status_contacto ?? 'Sin contactar')
     .input('etapa_pipeline', sql.NVarChar, o.etapa_pipeline ?? 'Universo')
 }
 
@@ -91,7 +92,7 @@ export const universoRepo = {
     const { recordset } = await pool.request().query('SELECT COUNT(*) AS n FROM universo')
     if (Number(recordset[0].n) > 0) return
     for (const o of data) {
-      await this.create({ status_contacto: 'Sin contacto', etapa_pipeline: 'Universo', ...o })
+      await this.create({ status_contacto: 'Sin contactar', etapa_pipeline: 'Universo', ...o })
     }
     console.log(`[db] Universo: ${data.length} prospectos iniciales insertados.`)
   },

@@ -223,6 +223,23 @@ body {
 .dash-back:hover,
 .slds-scope a.dash-back:hover { color: var(--c-snow) !important; text-decoration: none !important; }
 
+/* Tabs del dashboard */
+.dash-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 24px;
+}
+.dash-tab-btn {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-bottom-color 0.15s;
+}
+
 /* Tarjeta de métrica */
 .metric-card {
   background: var(--c-snow);
@@ -529,6 +546,61 @@ table.cot-table {
 /* Checkbox accent */
 .slds-scope input[type="checkbox"]:checked {
   accent-color: var(--c-accent);
+}
+
+/* ===================== Configuración: editor de correo ===================== */
+.correo-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  padding: 5px 8px;
+  background: #f4f6f9;
+  border: 1px solid #dddbda;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+}
+.correo-editor-body {
+  min-height: 200px;
+  padding: 12px;
+  border: 1px solid #dddbda;
+  border-top: none;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  background: #fff;
+}
+.correo-editor-body:focus-visible {
+  outline: 2px solid var(--c-accent, #1a73e8);
+  outline-offset: 2px;
+}
+.correo-firma-preview {
+  padding: 12px 14px;
+  background: #fafafa;
+  border: 1px solid #dddbda;
+  border-top: 1px solid #e8e6e6;
+  border-radius: 0 0 4px 4px;
+}
+.correo-adjunto-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: #f4f6f9;
+  border: 1px solid #dddbda;
+  border-radius: 12px;
+  font-size: 12px;
+}
+.correo-link-insertar-btn {
+  height: 26px;
+  padding: 0 10px;
+  background: #1e3a5f;
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
 }
 
 /* ===================== Impresión ===================== */

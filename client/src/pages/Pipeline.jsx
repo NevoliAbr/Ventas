@@ -88,7 +88,7 @@ export default function Pipeline() {
   const inputArchivoRef = useRef(null)
   const [busqueda, setBusqueda] = useState('')
   const [pendientesCot, setPendientesCot] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('lcg_pendientes_pipeline') || '[]') } catch { return [] }
+    try { return JSON.parse(localStorage.getItem('lcg_pendientes_pipeline:v1') || '[]') } catch { return [] }
   })
   const [mostrarPendientesCot, setMostrarPendientesCot] = useState(true)
   const [pendienteFolioActivo, setPendienteFolioActivo] = useState(null)
@@ -115,7 +115,7 @@ export default function Pipeline() {
       const ws = wb.Sheets[wb.SheetNames[0]]
       const filas = XLSX.utils.sheet_to_json(ws, { defval: '' })
       if (filas.length === 0) return fail(new Error('El archivo no tiene datos.'))
-      const registros = filas.map((fila) => {
+      const registros = filas.reduce((acc, fila) => {
         const reg = {}
         for (const [col, val] of Object.entries(fila)) {
           const campo = MAP_IMPORT[col.trim().toLowerCase()]
@@ -123,8 +123,9 @@ export default function Pipeline() {
             ? val.toISOString().slice(0, 10)
             : String(val ?? '').trim()
         }
-        return reg
-      }).filter((r) => r.prospecto)
+        if (reg.prospecto) acc.push(reg)
+        return acc
+      }, [])
       if (registros.length === 0) return fail(new Error('No se encontraron filas con prospecto válido.'))
       const { importados, errores } = await oportunidadesApi.importar(registros)
       const { oportunidades } = await oportunidadesApi.list()
@@ -192,7 +193,7 @@ export default function Pipeline() {
         if (pendienteFolioActivo) {
           setPendientesCot((prev) => {
             const next = prev.filter((x) => x._folio !== pendienteFolioActivo)
-            localStorage.setItem('lcg_pendientes_pipeline', JSON.stringify(next))
+            localStorage.setItem('lcg_pendientes_pipeline:v1', JSON.stringify(next))
             return next
           })
           setPendienteFolioActivo(null)
@@ -225,13 +226,19 @@ export default function Pipeline() {
     return (
       <div className="dashboard slds-scope"><div className="slds-container_large slds-container_center">
         <div className="dash-topbar"><div><Link to="/inicio" className="dash-back">← Inicio</Link><h1 className="dash-greeting">Pipeline</h1></div>
-          <button className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button></div>
+          <button type="button" className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button></div>
         <div className="slds-box slds-theme_default"><h2 className="slds-text-heading_small slds-m-bottom_x-small">Sin acceso</h2>
           <p className="slds-text-color_weak">No tienes la facultad <b>ventasVer</b>.</p>
           <p className="slds-m-top_small"><Link to="/inicio">← Volver al inicio</Link></p></div>
       </div></div>
     )
   }
+
+  const q = busqueda.toLowerCase()
+  const opsMostradas = busqueda
+    ? ops.filter((o) => [o.prospecto, o.tipo, o.sector, o.responsable, o.contacto_nombre, o.etapa]
+        .some((v) => (v || '').toLowerCase().includes(q)))
+    : ops
 
   return (
     <div className="dashboard slds-scope">
@@ -243,189 +250,218 @@ export default function Pipeline() {
             <p className="dash-subtitle">Oportunidades · valor ponderado = valor × probabilidad de cierre</p>
           </div>
           <div className="slds-grid slds-grid_vertical-align-center" style={{ gap: 8 }}>
-            {ops.length > 0 && <button className="slds-button slds-button_neutral" onClick={() => exportarExcel(ops, productos)}>⬇ Exportar</button>}
+            {ops.length > 0 && <button type="button" className="slds-button slds-button_neutral" onClick={() => exportarExcel(ops, productos)}>⬇ Exportar</button>}
             {canEdit && (<>
-              <button className="slds-button slds-button_neutral" onClick={() => inputArchivoRef.current?.click()}>⬆ Importar</button>
-              <input ref={inputArchivoRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={importarExcel} />
+              <button type="button" className="slds-button slds-button_neutral" onClick={() => inputArchivoRef.current?.click()}>⬆ Importar</button>
+              <input ref={inputArchivoRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={importarExcel} aria-label="Importar oportunidades desde Excel" />
             </>)}
-            <button className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
+            <button type="button" className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
           </div>
         </div>
 
         {error && <div className="slds-text-color_error slds-m-bottom_small" role="alert">⚠️ {error}</div>}
         {aviso && <div className="slds-text-color_success slds-m-bottom_small" role="status">✅ {aviso}</div>}
 
-        {/* Resumen forecast */}
-        <div className="slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
-          <div className="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-vertical_x-small">
-            <div className="metric-card"><p className="metric-label">Oportunidades</p><p className="metric-value">{ops.length}</p></div></div>
-          <div className="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-vertical_x-small">
-            <div className="metric-card"><p className="metric-label">Valor total pipeline</p><p className="metric-value">{money(totalPipeline)}</p></div></div>
-          <div className="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-vertical_x-small">
-            <div className="metric-card"><p className="metric-label">Forecast (ponderado)</p><p className="metric-value">{money(totalForecast)}</p></div></div>
-        </div>
+        <PipelineMetricas ops={ops} totalPipeline={totalPipeline} totalForecast={totalForecast} />
 
         {pendientesCot.length > 0 && (
-          <div className="slds-box slds-m-bottom_medium" style={{ borderLeft: '4px solid #0070d2', background: '#f0f4ff' }}>
-            <div className="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
-              <div className="slds-grid slds-grid_vertical-align-center" style={{ gap: 10 }}>
-                <span style={{ background: '#0070d2', color: '#fff', borderRadius: 999, padding: '2px 11px', fontWeight: 700, fontSize: '0.85rem' }}>{pendientesCot.length}</span>
-                <strong>Pendientes de Pipeline</strong>
-                <span className="slds-text-color_weak slds-text-body_small">— Selecciona uno para completar sus datos</span>
-              </div>
-              <button className="slds-button slds-button_neutral" onClick={() => setMostrarPendientesCot((v) => !v)}>
-                {mostrarPendientesCot ? 'Ocultar ▲' : 'Ver ▼'}
-              </button>
-            </div>
-            {mostrarPendientesCot && (
-              <div className="slds-m-top_small" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {pendientesCot.map((item) => (
-                  <button key={item._folio} className="slds-button slds-button_neutral"
-                    style={{ textAlign: 'left', borderColor: pendienteFolioActivo === item._folio ? '#0070d2' : undefined, fontWeight: pendienteFolioActivo === item._folio ? 700 : undefined }}
-                    onClick={() => seleccionarPendienteCot(item)}>
-                    <strong>{item.prospecto}</strong> · {item._folio}{item.responsable && <> · {item.responsable}</>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <PendientesCotBanner
+            pendientesCot={pendientesCot} mostrar={mostrarPendientesCot}
+            onToggleMostrar={() => setMostrarPendientesCot((v) => !v)}
+            pendienteFolioActivo={pendienteFolioActivo} onSeleccionar={seleccionarPendienteCot}
+          />
         )}
 
         {canEdit && (
-          <div className="slds-box slds-theme_default slds-m-bottom_medium">
-            <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
-              <h2 className="slds-text-heading_small">{editId ? 'Editar oportunidad' : pendienteFolioActivo ? `Agregar cotización ${pendienteFolioActivo} a Pipeline` : 'Nueva oportunidad'}</h2>
-              {(editId || pendienteFolioActivo) && <button className="slds-button slds-button_neutral" onClick={() => { setForm(VACIO); setEditId(null); setPendienteFolioActivo(null) }}>Cancelar</button>}
-            </div>
-            {vendibles.length === 0 ? (
-              <p className="slds-text-color_weak slds-text-body_small">Crea productos con rangos en <Link to="/configuracion-ventas">Configuración de ventas</Link>.</p>
-            ) : (
-              <form onSubmit={guardar}>
-                <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end">
-                  <div className="slds-col slds-size_1-of-3"><label className="slds-form-element__label">Empresa / Municipio</label>
-                    <input className="slds-input" value={form.prospecto} onChange={(e) => setForm({ ...form, prospecto: e.target.value })} required /></div>
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}><label className="slds-form-element__label">Tipo</label>
-                    <div className="slds-select_container"><select className="slds-select" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
-                      <option value="">—</option>{tipos.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select></div></div>
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 160 }}><label className="slds-form-element__label">Sector</label>
-                    <input className="slds-input" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} placeholder="Logística…" /></div>
-                  <div className="slds-col slds-size_1-of-3"><label className="slds-form-element__label">Producto</label>
-                    <div className="slds-select_container"><select className="slds-select" value={form.productoId} onChange={(e) => cambiarProducto(e.target.value)} required>
-                      <option value="">— Elegir —</option>{vendibles.map((p) => <option key={p.id} value={p.id}>{p.nombre}{p.sector ? ` (${p.sector})` : ''}</option>)}
-                    </select></div></div>
-                </div>
-                <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end slds-m-top_x-small">
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 110 }}><label className="slds-form-element__label">Unidades</label>
-                    <input className="slds-input" type="number" min="1" value={form.unidades} disabled={!prodSel} onChange={(e) => cambiarUnidades(e.target.value)} required /></div>
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 80 }}><label className="slds-form-element__label">Años</label>
-                    <div className="slds-select_container"><select className="slds-select" value={form.anios} onChange={(e) => setForm({ ...form, anios: e.target.value })}>
-                      {ANIOS.map((a) => <option key={a} value={a}>{a}</option>)}</select></div></div>
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 140 }}><label className="slds-form-element__label">Precio unit./mes</label>
-                    <input className="slds-input" type="number" min="0" step="0.01" value={form.precio} disabled={!rangoSel} onChange={(e) => setForm({ ...form, precio: e.target.value })} required /></div>
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 200 }}><label className="slds-form-element__label">Prob. cierre</label>
-                    <div className="slds-select_container"><select className="slds-select" value={form.prob} onChange={(e) => setForm({ ...form, prob: e.target.value })}>
-                      {PROBS.map((p) => <option key={p} value={p}>{Math.round(p * 100)}% — {PROB_LABELS[p]}</option>)}</select></div></div>
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}><label className="slds-form-element__label">Etapa</label>
-                    <div className="slds-select_container"><select className="slds-select" value={form.etapa} onChange={(e) => setForm({ ...form, etapa: e.target.value })}>
-                      {(etapas.length ? etapas : ['Prospecting']).map((e) => <option key={e} value={e}>{e}</option>)}</select></div></div>
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 90 }}><label className="slds-form-element__label">Trimestre</label>
-                    <div className="slds-select_container"><select className="slds-select" value={form.trimestre} onChange={(e) => setForm({ ...form, trimestre: e.target.value })}>
-                      {TRIMESTRES.map((q) => <option key={q} value={q}>{q}</option>)}</select></div></div>
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 120 }}><label className="slds-form-element__label">Mes estimado</label>
-                    <input className="slds-input" value={form.mes} onChange={(e) => setForm({ ...form, mes: e.target.value })} placeholder="Mayo" /></div>
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 180 }}><label className="slds-form-element__label">Responsable venta</label>
-                    <input className="slds-input" value={form.responsable} onChange={(e) => setForm({ ...form, responsable: e.target.value })} placeholder="Nombre…" /></div>
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 180 }}><label className="slds-form-element__label">Contacto principal</label>
-                    <input className="slds-input" value={form.contacto_nombre} onChange={(e) => setForm({ ...form, contacto_nombre: e.target.value })} /></div>
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}><label className="slds-form-element__label">Tel. contacto</label>
-                    <input className="slds-input" value={form.contacto_telefono} onChange={(e) => setForm({ ...form, contacto_telefono: e.target.value })} /></div>
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}><label className="slds-form-element__label">Fecha cotización</label>
-                    <input className="slds-input" type="date" value={form.fecha_cotizacion} onChange={(e) => setForm({ ...form, fecha_cotizacion: e.target.value })} /></div>
-                  <div className="slds-col slds-size_1-of-2"><label className="slds-form-element__label">Próximo paso</label>
-                    <input className="slds-input" value={form.proximo_paso} onChange={(e) => setForm({ ...form, proximo_paso: e.target.value })} placeholder="Enviar propuesta…" /></div>
-                  <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}><label className="slds-form-element__label">Fecha próximo paso</label>
-                    <input className="slds-input" type="date" value={form.fecha_sig_paso} onChange={(e) => setForm({ ...form, fecha_sig_paso: e.target.value })} /></div>
-                  <div className="slds-col slds-size_1-of-1 slds-m-top_x-small"><label className="slds-form-element__label">Notas / Observaciones</label>
-                    <input className="slds-input" value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} placeholder="Observaciones, evolución…" /></div>
-                  <div className="slds-col slds-grow-none slds-m-top_x-small"><button className="slds-button slds-button_brand" type="submit" disabled={!rangoSel}>{editId ? 'Guardar' : 'Agregar'}</button></div>
-                </div>
-                {form.unidades && !rangoSel && <p className="slds-text-color_error slds-text-body_small slds-m-top_x-small">⚠️ No hay rango para {form.unidades} unidades.</p>}
-                {prev && rangoSel && (
-                  <p className="slds-text-body_small slds-text-color_weak slds-m-top_x-small">
-                    Banda {money(rangoSel.precio_piso)}–{money(rangoSel.precio_lista)} · Anual {money(prev.anual)} · Valor contrato {money(prev.valor)} · <b>Ponderado {money(prev.pond)}</b>
-                  </p>
-                )}
-              </form>
-            )}
-          </div>
+          <OportunidadFormulario
+            form={form} setForm={setForm} editId={editId} pendienteFolioActivo={pendienteFolioActivo}
+            onCancelar={() => { setForm(VACIO); setEditId(null); setPendienteFolioActivo(null) }}
+            vendibles={vendibles} tipos={tipos} etapas={etapas}
+            prodSel={prodSel} rangoSel={rangoSel} prev={prev}
+            onCambiarProducto={cambiarProducto} onCambiarUnidades={cambiarUnidades}
+            onSubmit={guardar}
+          />
         )}
 
-        {/* Buscador */}
         <div className="slds-m-bottom_small" style={{ maxWidth: 340 }}>
-          <label className="slds-form-element__label">Buscar</label>
-          <input className="slds-input" placeholder="Empresa, sector, responsable…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
+          <label className="slds-form-element__label" htmlFor="op-busqueda">Buscar</label>
+          <input id="op-busqueda" className="slds-input" placeholder="Empresa, sector, responsable…" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
 
-        <div className="slds-box slds-theme_default">
-          {(() => {
-            const q = busqueda.toLowerCase()
-            const opsMostradas = busqueda
-              ? ops.filter((o) => [o.prospecto, o.tipo, o.sector, o.responsable, o.contacto_nombre, o.etapa]
-                  .some((v) => (v || '').toLowerCase().includes(q)))
-              : ops
-            return (
-          <>
-          <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
-            <h2 className="slds-text-heading_small">Oportunidades ({opsMostradas.length}{busqueda ? ` de ${ops.length}` : ''})</h2>
-          </div>
-          {cargando ? <p className="slds-text-color_weak">Cargando…</p> : opsMostradas.length === 0 ? (
-            <p className="slds-text-color_weak">{busqueda ? 'Sin resultados para esa búsqueda.' : 'Aún no hay oportunidades.'}</p>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-            <table className="slds-table slds-table_bordered slds-table_cell-buffer">
-              <thead><tr className="slds-line-height_reset">
-                <th>Empresa</th><th>Tipo</th><th>Sector</th><th>Responsable</th><th>Contacto</th>
-                <th>Etapa</th><th>Unid.</th><th>Años</th><th>Valor contrato</th>
-                <th>Prob.</th><th>Estado</th><th>Ponderado</th><th>Trim.</th><th>F. cotiz.</th><th>Próx. paso</th>
-                {(canEdit || canDelete) && <th>Acciones</th>}
-              </tr></thead>
-              <tbody>
-                {opsMostradas.map((o) => (
-                  <tr key={o.id}>
-                    <td><strong>{o.prospecto}</strong></td>
-                    <td>{o.tipo || '—'}</td>
-                    <td>{o.sector || '—'}</td>
-                    <td>{o.responsable || '—'}</td>
-                    <td>{o.contacto_nombre || '—'}{o.contacto_telefono && <><br /><span className="slds-text-body_small">{o.contacto_telefono}</span></>}</td>
-                    <td><span className={'role-badge ' + etapaColor(o.etapa)}>{o.etapa}</span></td>
-                    <td>{o.unidades}</td>
-                    <td>{o.anios}</td>
-                    <td className="activity-amount">{money(o.valor_total)}</td>
-                    <td>{Math.round(Number(o.prob_cierre) * 100)}%</td>
-                    <td style={{ fontSize: '0.75rem', color: '#555' }}>{PROB_LABELS[Number(o.prob_cierre)] || '—'}</td>
-                    <td className="activity-amount">{money(o.valor_ponderado)}</td>
-                    <td>{o.trimestre || '—'}</td>
-                    <td>{o.fecha_cotizacion || '—'}</td>
-                    <td style={{ maxWidth: 160, whiteSpace: 'normal' }}>
-                      {o.proximo_paso || '—'}
-                      {o.fecha_sig_paso && <><br /><span className="slds-text-body_small">{o.fecha_sig_paso}</span></>}
-                    </td>
-                    {(canEdit || canDelete) && <td>
-                      {canEdit && <><button className="slds-button slds-button_neutral" onClick={() => editar(o)}>Editar</button>{' '}</>}
-                      {canDelete && <button className="slds-button slds-button_text-destructive" onClick={() => eliminar(o)}>Eliminar</button>}
-                    </td>}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          )}
-          </>
-            )
-          })()}
-        </div>
+        <OportunidadesTabla
+          opsMostradas={opsMostradas} ops={ops} busqueda={busqueda} cargando={cargando}
+          canEdit={canEdit} canDelete={canDelete} onEditar={editar} onEliminar={eliminar}
+        />
       </div>
+    </div>
+  )
+}
+
+function PipelineMetricas({ ops, totalPipeline, totalForecast }) {
+  return (
+    <div className="slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
+      <div className="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-vertical_x-small">
+        <div className="metric-card"><p className="metric-label">Oportunidades</p><p className="metric-value">{ops.length}</p></div></div>
+      <div className="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-vertical_x-small">
+        <div className="metric-card"><p className="metric-label">Valor total pipeline</p><p className="metric-value">{money(totalPipeline)}</p></div></div>
+      <div className="slds-col slds-size_1-of-1 slds-medium-size_1-of-3 slds-p-vertical_x-small">
+        <div className="metric-card"><p className="metric-label">Forecast (ponderado)</p><p className="metric-value">{money(totalForecast)}</p></div></div>
+    </div>
+  )
+}
+
+function PendientesCotBanner({ pendientesCot, mostrar, onToggleMostrar, pendienteFolioActivo, onSeleccionar }) {
+  return (
+    <div className="slds-box slds-m-bottom_medium" style={{ borderLeft: '4px solid #0070d2', background: '#f0f4ff' }}>
+      <div className="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+        <div className="slds-grid slds-grid_vertical-align-center" style={{ gap: 10 }}>
+          <span style={{ background: '#0070d2', color: '#fff', borderRadius: 999, padding: '2px 11px', fontWeight: 700, fontSize: '0.85rem' }}>{pendientesCot.length}</span>
+          <strong>Pendientes de Pipeline</strong>
+          <span className="slds-text-color_weak slds-text-body_small">— Selecciona uno para completar sus datos</span>
+        </div>
+        <button type="button" className="slds-button slds-button_neutral" onClick={onToggleMostrar}>
+          {mostrar ? 'Ocultar ▲' : 'Ver ▼'}
+        </button>
+      </div>
+      {mostrar && (
+        <div className="slds-m-top_small" style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {pendientesCot.map((item) => (
+            <button key={item._folio} type="button" className="slds-button slds-button_neutral"
+              style={{ textAlign: 'left', borderColor: pendienteFolioActivo === item._folio ? '#0070d2' : undefined, fontWeight: pendienteFolioActivo === item._folio ? 700 : undefined }}
+              onClick={() => onSeleccionar(item)}>
+              <strong>{item.prospecto}</strong> · {item._folio}{item.responsable && <> · {item.responsable}</>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OportunidadFormulario({
+  form, setForm, editId, pendienteFolioActivo, onCancelar,
+  vendibles, tipos, etapas, prodSel, rangoSel, prev,
+  onCambiarProducto, onCambiarUnidades, onSubmit,
+}) {
+  return (
+    <div className="slds-box slds-theme_default slds-m-bottom_medium">
+      <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
+        <h2 className="slds-text-heading_small">{editId ? 'Editar oportunidad' : pendienteFolioActivo ? `Agregar cotización ${pendienteFolioActivo} a Pipeline` : 'Nueva oportunidad'}</h2>
+        {(editId || pendienteFolioActivo) && <button type="button" className="slds-button slds-button_neutral" onClick={onCancelar}>Cancelar</button>}
+      </div>
+      {vendibles.length === 0 ? (
+        <p className="slds-text-color_weak slds-text-body_small">Crea productos con rangos en <Link to="/configuracion-ventas">Configuración de ventas</Link>.</p>
+      ) : (
+        <form onSubmit={onSubmit}>
+          <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end">
+            <div className="slds-col slds-size_1-of-3"><label className="slds-form-element__label" htmlFor="op-prospecto">Empresa / Municipio</label>
+              <input id="op-prospecto" className="slds-input" value={form.prospecto} onChange={(e) => setForm({ ...form, prospecto: e.target.value })} required /></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}><label className="slds-form-element__label" htmlFor="op-tipo">Tipo</label>
+              <div className="slds-select_container"><select id="op-tipo" className="slds-select" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
+                <option value="">—</option>{tipos.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select></div></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 160 }}><label className="slds-form-element__label" htmlFor="op-sector">Sector</label>
+              <input id="op-sector" className="slds-input" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} placeholder="Logística…" /></div>
+            <div className="slds-col slds-size_1-of-3"><label className="slds-form-element__label" htmlFor="op-producto">Producto</label>
+              <div className="slds-select_container"><select id="op-producto" className="slds-select" value={form.productoId} onChange={(e) => onCambiarProducto(e.target.value)} required>
+                <option value="">— Elegir —</option>{vendibles.map((p) => <option key={p.id} value={p.id}>{p.nombre}{p.sector ? ` (${p.sector})` : ''}</option>)}
+              </select></div></div>
+          </div>
+          <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end slds-m-top_x-small">
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 110 }}><label className="slds-form-element__label" htmlFor="op-unidades">Unidades</label>
+              <input id="op-unidades" className="slds-input" type="number" min="1" value={form.unidades} disabled={!prodSel} onChange={(e) => onCambiarUnidades(e.target.value)} required /></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 80 }}><label className="slds-form-element__label" htmlFor="op-anios">Años</label>
+              <div className="slds-select_container"><select id="op-anios" className="slds-select" value={form.anios} onChange={(e) => setForm({ ...form, anios: e.target.value })}>
+                {ANIOS.map((a) => <option key={a} value={a}>{a}</option>)}</select></div></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 140 }}><label className="slds-form-element__label" htmlFor="op-precio">Precio unit./mes</label>
+              <input id="op-precio" className="slds-input" type="number" min="0" step="0.01" value={form.precio} disabled={!rangoSel} onChange={(e) => setForm({ ...form, precio: e.target.value })} required /></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 200 }}><label className="slds-form-element__label" htmlFor="op-prob">Prob. cierre</label>
+              <div className="slds-select_container"><select id="op-prob" className="slds-select" value={form.prob} onChange={(e) => setForm({ ...form, prob: e.target.value })}>
+                {PROBS.map((p) => <option key={p} value={p}>{Math.round(p * 100)}% — {PROB_LABELS[p]}</option>)}</select></div></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}><label className="slds-form-element__label" htmlFor="op-etapa">Etapa</label>
+              <div className="slds-select_container"><select id="op-etapa" className="slds-select" value={form.etapa} onChange={(e) => setForm({ ...form, etapa: e.target.value })}>
+                {(etapas.length ? etapas : ['Prospecting']).map((e) => <option key={e} value={e}>{e}</option>)}</select></div></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 90 }}><label className="slds-form-element__label" htmlFor="op-trimestre">Trimestre</label>
+              <div className="slds-select_container"><select id="op-trimestre" className="slds-select" value={form.trimestre} onChange={(e) => setForm({ ...form, trimestre: e.target.value })}>
+                {TRIMESTRES.map((q) => <option key={q} value={q}>{q}</option>)}</select></div></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 120 }}><label className="slds-form-element__label" htmlFor="op-mes">Mes estimado</label>
+              <input id="op-mes" className="slds-input" value={form.mes} onChange={(e) => setForm({ ...form, mes: e.target.value })} placeholder="Mayo" /></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 180 }}><label className="slds-form-element__label" htmlFor="op-responsable">Responsable venta</label>
+              <input id="op-responsable" className="slds-input" value={form.responsable} onChange={(e) => setForm({ ...form, responsable: e.target.value })} placeholder="Nombre…" /></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 180 }}><label className="slds-form-element__label" htmlFor="op-contacto-nombre">Contacto principal</label>
+              <input id="op-contacto-nombre" className="slds-input" value={form.contacto_nombre} onChange={(e) => setForm({ ...form, contacto_nombre: e.target.value })} /></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}><label className="slds-form-element__label" htmlFor="op-contacto-telefono">Tel. contacto</label>
+              <input id="op-contacto-telefono" className="slds-input" value={form.contacto_telefono} onChange={(e) => setForm({ ...form, contacto_telefono: e.target.value })} /></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}><label className="slds-form-element__label" htmlFor="op-fecha-cotizacion">Fecha cotización</label>
+              <input id="op-fecha-cotizacion" className="slds-input" type="date" value={form.fecha_cotizacion} onChange={(e) => setForm({ ...form, fecha_cotizacion: e.target.value })} /></div>
+            <div className="slds-col slds-size_1-of-2"><label className="slds-form-element__label" htmlFor="op-proximo-paso">Próximo paso</label>
+              <input id="op-proximo-paso" className="slds-input" value={form.proximo_paso} onChange={(e) => setForm({ ...form, proximo_paso: e.target.value })} placeholder="Enviar propuesta…" /></div>
+            <div className="slds-col slds-grow-none" style={{ maxWidth: 150 }}><label className="slds-form-element__label" htmlFor="op-fecha-sig-paso">Fecha próximo paso</label>
+              <input id="op-fecha-sig-paso" className="slds-input" type="date" value={form.fecha_sig_paso} onChange={(e) => setForm({ ...form, fecha_sig_paso: e.target.value })} /></div>
+            <div className="slds-col slds-size_1-of-1 slds-m-top_x-small"><label className="slds-form-element__label" htmlFor="op-notas">Notas / Observaciones</label>
+              <input id="op-notas" className="slds-input" value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} placeholder="Observaciones, evolución…" /></div>
+            <div className="slds-col slds-grow-none slds-m-top_x-small"><button className="slds-button slds-button_brand" type="submit" disabled={!rangoSel}>{editId ? 'Guardar' : 'Agregar'}</button></div>
+          </div>
+          {form.unidades && !rangoSel && <p className="slds-text-color_error slds-text-body_small slds-m-top_x-small">⚠️ No hay rango para {form.unidades} unidades.</p>}
+          {prev && rangoSel && (
+            <p className="slds-text-body_small slds-text-color_weak slds-m-top_x-small">
+              Banda {money(rangoSel.precio_piso)}–{money(rangoSel.precio_lista)} · Anual {money(prev.anual)} · Valor contrato {money(prev.valor)} · <b>Ponderado {money(prev.pond)}</b>
+            </p>
+          )}
+        </form>
+      )}
+    </div>
+  )
+}
+
+function OportunidadesTabla({ opsMostradas, ops, busqueda, cargando, canEdit, canDelete, onEditar, onEliminar }) {
+  return (
+    <div className="slds-box slds-theme_default">
+      <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
+        <h2 className="slds-text-heading_small">Oportunidades ({opsMostradas.length}{busqueda ? ` de ${ops.length}` : ''})</h2>
+      </div>
+      {cargando ? <p className="slds-text-color_weak">Cargando…</p> : opsMostradas.length === 0 ? (
+        <p className="slds-text-color_weak">{busqueda ? 'Sin resultados para esa búsqueda.' : 'Aún no hay oportunidades.'}</p>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+        <table className="slds-table slds-table_bordered slds-table_cell-buffer">
+          <thead><tr className="slds-line-height_reset">
+            <th>Empresa</th><th>Tipo</th><th>Sector</th><th>Responsable</th><th>Contacto</th>
+            <th>Etapa</th><th>Unid.</th><th>Años</th><th>Valor contrato</th>
+            <th>Prob.</th><th>Estado</th><th>Ponderado</th><th>Trim.</th><th>F. cotiz.</th><th>Próx. paso</th>
+            {(canEdit || canDelete) && <th>Acciones</th>}
+          </tr></thead>
+          <tbody>
+            {opsMostradas.map((o) => (
+              <tr key={o.id}>
+                <td><strong>{o.prospecto}</strong></td>
+                <td>{o.tipo || '—'}</td>
+                <td>{o.sector || '—'}</td>
+                <td>{o.responsable || '—'}</td>
+                <td>{o.contacto_nombre || '—'}{o.contacto_telefono && <><br /><span className="slds-text-body_small">{o.contacto_telefono}</span></>}</td>
+                <td><span className={'role-badge ' + etapaColor(o.etapa)}>{o.etapa}</span></td>
+                <td>{o.unidades}</td>
+                <td>{o.anios}</td>
+                <td className="activity-amount">{money(o.valor_total)}</td>
+                <td>{Math.round(Number(o.prob_cierre) * 100)}%</td>
+                <td style={{ fontSize: '0.75rem', color: '#555' }}>{PROB_LABELS[Number(o.prob_cierre)] || '—'}</td>
+                <td className="activity-amount">{money(o.valor_ponderado)}</td>
+                <td>{o.trimestre || '—'}</td>
+                <td>{o.fecha_cotizacion || '—'}</td>
+                <td style={{ maxWidth: 160, whiteSpace: 'normal' }}>
+                  {o.proximo_paso || '—'}
+                  {o.fecha_sig_paso && <><br /><span className="slds-text-body_small">{o.fecha_sig_paso}</span></>}
+                </td>
+                {(canEdit || canDelete) && <td>
+                  {canEdit && <><button type="button" className="slds-button slds-button_neutral" onClick={() => onEditar(o)}>Editar</button>{' '}</>}
+                  {canDelete && <button type="button" className="slds-button slds-button_text-destructive" onClick={() => onEliminar(o)}>Eliminar</button>}
+                </td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        </div>
+      )}
     </div>
   )
 }

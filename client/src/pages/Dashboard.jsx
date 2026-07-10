@@ -11,10 +11,16 @@ import { oportunidadesApi, prospectoApi, universoApi } from '../services/api.js'
 const COLORES = ['#2563eb', '#16a34a', '#d97706', '#7c3aed', '#dc2626', '#0891b2', '#6b7280', '#f59e0b']
 const money = (n) => '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
+// ── Constantes estáticas de las tabs ────────────────────────────────────────
+const STATUS_R = ['Agendada', 'Realizada', 'Reprogramada', 'Cancelada']
+const ETAPAS = ['Prospecting', 'Discovery', 'Proposal', 'Negotiation', 'Won', 'Lost']
+const TRIMESTRES = ['Q1', 'Q2', 'Q3', 'Q4']
+const PROBS = [0, 0.25, 0.5, 0.75, 0.9, 1]
+const PROB_LABELS = { 0: 'Sin posib.', 0.25: 'Interesado', 0.5: 'En aprob.', 0.75: 'Aprobado', 0.9: 'Esperando', 1: 'Cerrado' }
+
 // ── Helpers de exportar ─────────────────────────────────────────────────────
 async function exportarInforme(refSeccion, titulo) {
-  const { default: html2canvas } = await import('html2canvas')
-  const { jsPDF } = await import('jspdf')
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')])
   const canvas = await html2canvas(refSeccion, { scale: 2, useCORS: true, backgroundColor: '#ffffff' })
   const imgData = canvas.toDataURL('image/png')
   const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
@@ -60,10 +66,10 @@ function TabUniverso({ datos, refExport }) {
   if (!datos) return <p className="slds-text-color_weak slds-m-top_medium">Cargando…</p>
   const { universo, pendientes } = datos
   const total = universo.length
-  const porStatus = ['Sin contacto', 'Contactado', 'Siguientes pasos', 'Primera reunión', 'Ganado', 'Perdido']
+  const porStatus = ['Sin contactar', 'Contactado', 'Siguientes pasos', 'Primera reunión', 'Ganado', 'Perdido']
     .map((s) => ({ name: s, value: universo.filter((r) => r.status_contacto === s).length })).filter((d) => d.value > 0)
-  const porSegmento = ['Privado', 'Gob.'].map((s) => ({ name: s, value: universo.filter((r) => r.segmento === s).length })).filter((d) => d.value > 0)
-  const porTipo = ['Empresa', 'Municipio'].map((t) => ({ name: t, value: universo.filter((r) => r.tipo === t).length })).filter((d) => d.value > 0)
+  const porSegmento = ['Público', 'Privado'].map((s) => ({ name: s, value: universo.filter((r) => r.segmento === s).length })).filter((d) => d.value > 0)
+  const porTipo = ['Empresa', 'Municipal', 'Estatal', 'Federal'].map((t) => ({ name: t, value: universo.filter((r) => r.tipo === t).length })).filter((d) => d.value > 0)
   const porEtapa = ['Universo', 'En contacto', 'Reunión agendada', 'Cotización']
     .map((e) => ({ name: e, value: universo.filter((r) => r.etapa_pipeline === e).length })).filter((d) => d.value > 0)
   const conContacto = universo.filter((r) => r.contacto_nombre).length
@@ -98,7 +104,7 @@ function TabUniverso({ datos, refExport }) {
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={<TooltipCustom />} />
                 <Bar dataKey="value" name="Contactos" radius={[4, 4, 0, 0]}>
-                  {porStatus.map((_, i) => <Cell key={i} fill={COLORES[i % COLORES.length]} />)}
+                  {porStatus.map((d, i) => <Cell key={d.name} fill={COLORES[i % COLORES.length]} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -113,7 +119,7 @@ function TabUniverso({ datos, refExport }) {
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={<TooltipCustom />} />
                 <Bar dataKey="value" name="Registros" radius={[4, 4, 0, 0]}>
-                  {porEtapa.map((_, i) => <Cell key={i} fill={COLORES[i % COLORES.length]} />)}
+                  {porEtapa.map((d, i) => <Cell key={d.name} fill={COLORES[i % COLORES.length]} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -129,7 +135,7 @@ function TabUniverso({ datos, refExport }) {
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={porSegmento} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75} label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`} labelLine={false}>
-                  {porSegmento.map((_, i) => <Cell key={i} fill={COLORES[i % COLORES.length]} />)}
+                  {porSegmento.map((d, i) => <Cell key={d.name} fill={COLORES[i % COLORES.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v, n) => [v, n]} />
                 <Legend />
@@ -143,7 +149,7 @@ function TabUniverso({ datos, refExport }) {
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={porTipo} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75} label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`} labelLine={false}>
-                  {porTipo.map((_, i) => <Cell key={i} fill={COLORES[i + 2 % COLORES.length]} />)}
+                  {porTipo.map((d, i) => <Cell key={d.name} fill={COLORES[i + 2 % COLORES.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v, n) => [v, n]} />
                 <Legend />
@@ -167,9 +173,16 @@ function TabProspectos({ datos, refExport }) {
   const forecast = prospectos.filter((r) => r.pasa_forecast || r.pasa_forecast === 1).length
   const cotizacion = prospectos.filter((r) => r.pide_cotizacion || r.pide_cotizacion === 1).length
 
-  const STATUS_R = ['Agendada', 'Realizada', 'Reprogramada', 'Cancelada']
-  const por1ra = STATUS_R.map((s) => ({ name: s, value: prospectos.filter((r) => r.status_1ra_reunion === s).length })).filter((d) => d.value > 0)
-  const por2da = STATUS_R.map((s) => ({ name: s, value: prospectos.filter((r) => r.status_2da_reunion === s).length })).filter((d) => d.value > 0)
+  const por1ra = STATUS_R.reduce((acc, s) => {
+    const value = prospectos.filter((r) => r.status_1ra_reunion === s).length
+    if (value > 0) acc.push({ name: s, value })
+    return acc
+  }, [])
+  const por2da = STATUS_R.reduce((acc, s) => {
+    const value = prospectos.filter((r) => r.status_2da_reunion === s).length
+    if (value > 0) acc.push({ name: s, value })
+    return acc
+  }, [])
   const pieEstado = [
     { name: 'En proceso', value: enProceso },
     { name: 'Pasaron a Forecast', value: forecast },
@@ -198,7 +211,7 @@ function TabProspectos({ datos, refExport }) {
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={pieEstado} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75} label={({ name, percent }) => `${Math.round(percent * 100)}%`}>
-                  {pieEstado.map((_, i) => <Cell key={i} fill={COLORES[i % COLORES.length]} />)}
+                  {pieEstado.map((d, i) => <Cell key={d.name} fill={COLORES[i % COLORES.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v, n) => [v, n]} />
                 <Legend />
@@ -215,7 +228,7 @@ function TabProspectos({ datos, refExport }) {
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={<TooltipCustom />} />
                 <Bar dataKey="value" name="Prospectos" radius={[4, 4, 0, 0]}>
-                  {por1ra.map((_, i) => <Cell key={i} fill={COLORES[i % COLORES.length]} />)}
+                  {por1ra.map((d, i) => <Cell key={d.name} fill={COLORES[i % COLORES.length]} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -230,7 +243,7 @@ function TabProspectos({ datos, refExport }) {
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={<TooltipCustom />} />
                 <Bar dataKey="value" name="Prospectos" radius={[4, 4, 0, 0]}>
-                  {por2da.map((_, i) => <Cell key={i} fill={COLORES[i + 1 % COLORES.length]} />)}
+                  {por2da.map((d, i) => <Cell key={d.name} fill={COLORES[i + 1 % COLORES.length]} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -251,26 +264,36 @@ function TabPipeline({ datos, refExport }) {
   const totalPond = oportunidades.reduce((s, o) => s + Number(o.valor_ponderado || 0), 0)
   const cerradas = oportunidades.filter((o) => Number(o.prob_cierre) === 1).length
 
-  const ETAPAS = ['Prospecting', 'Discovery', 'Proposal', 'Negotiation', 'Won', 'Lost']
-  const porEtapa = ETAPAS.map((e) => ({
-    name: e,
-    cantidad: oportunidades.filter((o) => o.etapa === e).length,
-    valor: oportunidades.filter((o) => o.etapa === e).reduce((s, o) => s + Number(o.valor_total || 0), 0),
-  })).filter((d) => d.cantidad > 0)
+  const porEtapa = ETAPAS.reduce((acc, e) => {
+    const deEtapa = oportunidades.filter((o) => o.etapa === e)
+    if (deEtapa.length > 0) {
+      acc.push({
+        name: e,
+        cantidad: deEtapa.length,
+        valor: deEtapa.reduce((s, o) => s + Number(o.valor_total || 0), 0),
+      })
+    }
+    return acc
+  }, [])
 
-  const TRIMESTRES = ['Q1', 'Q2', 'Q3', 'Q4']
-  const porTrimestre = TRIMESTRES.map((q) => ({
-    name: q,
-    valor: oportunidades.filter((o) => o.trimestre === q).reduce((s, o) => s + Number(o.valor_total || 0), 0),
-    ponderado: oportunidades.filter((o) => o.trimestre === q).reduce((s, o) => s + Number(o.valor_ponderado || 0), 0),
-  })).filter((d) => d.valor > 0)
+  const porTrimestre = TRIMESTRES.reduce((acc, q) => {
+    const delTrimestre = oportunidades.filter((o) => o.trimestre === q)
+    const valor = delTrimestre.reduce((s, o) => s + Number(o.valor_total || 0), 0)
+    if (valor > 0) {
+      acc.push({
+        name: q,
+        valor,
+        ponderado: delTrimestre.reduce((s, o) => s + Number(o.valor_ponderado || 0), 0),
+      })
+    }
+    return acc
+  }, [])
 
-  const PROBS = [0, 0.25, 0.5, 0.75, 0.9, 1]
-  const PROB_LABELS = { 0: 'Sin posib.', 0.25: 'Interesado', 0.5: 'En aprob.', 0.75: 'Aprobado', 0.9: 'Esperando', 1: 'Cerrado' }
-  const porProb = PROBS.map((p) => ({
-    name: PROB_LABELS[p],
-    value: oportunidades.filter((o) => Number(o.prob_cierre) === p).length,
-  })).filter((d) => d.value > 0)
+  const porProb = PROBS.reduce((acc, p) => {
+    const value = oportunidades.filter((o) => Number(o.prob_cierre) === p).length
+    if (value > 0) acc.push({ name: PROB_LABELS[p], value })
+    return acc
+  }, [])
 
   return (
     <div ref={refExport}>
@@ -298,7 +321,7 @@ function TabPipeline({ datos, refExport }) {
                 <YAxis yAxisId="left" orientation="left" tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip content={<TooltipCustom />} />
                 <Bar yAxisId="left" dataKey="cantidad" name="Cantidad" radius={[4, 4, 0, 0]}>
-                  {porEtapa.map((_, i) => <Cell key={i} fill={COLORES[i % COLORES.length]} />)}
+                  {porEtapa.map((d, i) => <Cell key={d.name} fill={COLORES[i % COLORES.length]} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -328,7 +351,7 @@ function TabPipeline({ datos, refExport }) {
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={porProb} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75} label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`} labelLine={false}>
-                  {porProb.map((_, i) => <Cell key={i} fill={COLORES[i % COLORES.length]} />)}
+                  {porProb.map((d, i) => <Cell key={d.name} fill={COLORES[i % COLORES.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v, n) => [v, n]} />
                 <Legend />
@@ -345,7 +368,7 @@ function TabPipeline({ datos, refExport }) {
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={80} />
                 <Tooltip formatter={(v) => money(v)} />
                 <Bar dataKey="valor" name="Valor" radius={[0, 4, 4, 0]}>
-                  {porEtapa.map((_, i) => <Cell key={i} fill={COLORES[i % COLORES.length]} />)}
+                  {porEtapa.map((d, i) => <Cell key={d.name} fill={COLORES[i % COLORES.length]} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -415,23 +438,22 @@ export default function Dashboard() {
             <p className="dash-subtitle">Resumen ejecutivo · {user?.nombre}</p>
           </div>
           <div className="slds-grid slds-grid_vertical-align-center" style={{ gap: 8 }}>
-            <button className="slds-button slds-button_neutral" onClick={handleExportar} disabled={exportando}>
+            <button type="button" className="slds-button slds-button_neutral" onClick={handleExportar} disabled={exportando}>
               {exportando ? 'Generando…' : '⬇ Exportar informe'}
             </button>
-            <button className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
+            <button type="button" className="slds-button slds-button_neutral" onClick={salir}>Cerrar sesión</button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid #e5e7eb', marginBottom: 24 }}>
+        <div className="dash-tabs">
           {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
+            <button type="button" key={t.id} onClick={() => setTab(t.id)}
+              className="dash-tab-btn"
               style={{
-                padding: '10px 20px', border: 'none', background: 'none', cursor: 'pointer',
-                fontWeight: tab === t.id ? 700 : 400, fontSize: '0.95rem',
+                fontWeight: tab === t.id ? 700 : 400,
                 color: tab === t.id ? '#2563eb' : '#6b7280',
                 borderBottom: tab === t.id ? '2px solid #2563eb' : '2px solid transparent',
-                marginBottom: -2, transition: 'all 0.15s',
               }}>
               {t.label}
             </button>

@@ -1,28 +1,29 @@
 // Estado global de autenticación. Guarda el usuario y el token (en localStorage),
 // valida la sesión al cargar y expone login / register / logout.
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, use, useCallback, useEffect, useMemo, useState } from 'react'
 import { authApi } from '../services/api.js'
 
 const AuthContext = createContext(null)
 
 // Hook de conveniencia para consumir el contexto.
 export function useAuth() {
-  return useContext(AuthContext)
+  return use(AuthContext)
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(() => localStorage.getItem('token'))
-  const [loading, setLoading] = useState(true)
+  // Solo "cargamos" si había un token guardado que hay que validar contra el backend.
+  const [loading, setLoading] = useState(() => !!localStorage.getItem('token'))
 
-  // Al montar (o cuando cambia el token), validamos la sesión contra el backend.
+  // Solo al montar: si había una sesión guardada (token en localStorage), la
+  // validamos contra el backend. login/register ya traen el usuario y fijan
+  // el estado directamente, sin depender de este efecto.
   useEffect(() => {
-    if (!token) {
-      setLoading(false)
-      return
-    }
+    const storedToken = localStorage.getItem('token')
+    if (!storedToken) return
     authApi
-      .verifyToken(token)
+      .verifyToken(storedToken)
       .then(({ user }) => setUser(user))
       .catch(() => {
         // Token inválido/expirado: limpiamos.
@@ -31,31 +32,32 @@ export function AuthProvider({ children }) {
         setUser(null)
       })
       .finally(() => setLoading(false))
-  }, [token])
+  }, [])
 
-  async function login(email, password) {
+  const login = useCallback(async (email, password) => {
     const { user, token } = await authApi.login({ email, password })
     localStorage.setItem('token', token)
     setUser(user)
     setToken(token)
-  }
+  }, [])
 
-  async function register(nombre, email, password) {
+  const register = useCallback(async (nombre, email, password) => {
     const { user, token } = await authApi.register({ nombre, email, password })
     localStorage.setItem('token', token)
     setUser(user)
     setToken(token)
-  }
+  }, [])
 
-  function logout() {
+  const logout = useCallback(() => {
     localStorage.removeItem('token')
     setUser(null)
     setToken(null)
-  }
+  }, [])
 
-  return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ user, token, loading, login, register, logout }),
+    [user, token, loading, login, register, logout]
   )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

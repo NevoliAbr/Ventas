@@ -208,16 +208,25 @@ async function ensureSchema(pool) {
       contacto_nombre  NVARCHAR(200) NULL,
       email            NVARCHAR(320) NULL,
       telefono         NVARCHAR(50)  NULL,
+      telefono2        NVARCHAR(50)  NULL,
       sitio_web        NVARCHAR(300) NULL,
       linkedin         NVARCHAR(300) NULL,
       tipo             NVARCHAR(30)  NULL,
       responsable      NVARCHAR(200) NULL,
       fecha_contacto   NVARCHAR(40)  NULL,
-      status_contacto  NVARCHAR(30)  NOT NULL CONSTRAINT DF_uni_status DEFAULT 'Sin contacto',
+      status_contacto  NVARCHAR(30)  NOT NULL CONSTRAINT DF_uni_status DEFAULT 'Sin contactar',
       etapa_pipeline   NVARCHAR(30)  NOT NULL CONSTRAINT DF_uni_etapa  DEFAULT 'Universo',
       es_prospecto     BIT           NOT NULL CONSTRAINT DF_uni_esp    DEFAULT 0,
       createdAt        NVARCHAR(40)  NOT NULL
     )`)
+  await pool.request().query(`IF COL_LENGTH('universo','telefono2') IS NULL ALTER TABLE universo ADD telefono2 NVARCHAR(50) NULL`)
+  await pool.request().query(`UPDATE universo SET status_contacto = 'Sin contactar' WHERE status_contacto = 'Sin contacto'`)
+  await pool.request().query(`UPDATE universo SET segmento = 'Público' WHERE segmento = 'Gob.'`)
+  await pool.request().query(`UPDATE universo SET tipo = 'Municipal' WHERE tipo = 'Municipio'`)
+  await pool.request().query(`UPDATE universo SET tipo = 'Estatal' WHERE tipo = 'Gobierno estatal'`)
+  await pool.request().query(`UPDATE prospectos_activos SET tipo = 'Municipal' WHERE tipo = 'Municipio'`)
+  await pool.request().query(`UPDATE universo SET responsable = 'Alonso García' WHERE responsable = 'Alonso'`)
+  await pool.request().query(`UPDATE prospectos_activos SET responsable = 'Alonso García' WHERE responsable = 'Alonso'`)
 
   // Prospectos activos (reuniones)
   await pool.request().query(`
@@ -228,6 +237,7 @@ async function ensureSchema(pool) {
       tipo               NVARCHAR(30)  NULL,
       contacto_nombre    NVARCHAR(200) NULL,
       telefono           NVARCHAR(50)  NULL,
+      telefono2          NVARCHAR(50)  NULL,
       responsable        NVARCHAR(200) NULL,
       fecha_1ra_reunion  NVARCHAR(40)  NULL,
       status_1ra_reunion NVARCHAR(30)  NULL,
@@ -239,6 +249,7 @@ async function ensureSchema(pool) {
       pasa_forecast      BIT           NOT NULL CONSTRAINT DF_pr_pasa  DEFAULT 0,
       createdAt          NVARCHAR(40)  NOT NULL
     )`)
+  await pool.request().query(`IF COL_LENGTH('prospectos_activos','telefono2') IS NULL ALTER TABLE prospectos_activos ADD telefono2 NVARCHAR(50) NULL`)
 
   await pool.request().query(`
     IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='reuniones' AND xtype='U')

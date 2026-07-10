@@ -1,10 +1,11 @@
 import { universoRepo } from '../lib/universoStore.js'
 import { prospectoRepo } from '../lib/prospectoStore.js'
 
-const STATUS_CONTACTO = ['Sin contacto', 'Contactado', 'Siguientes pasos', 'Primera reunión', 'Ganado', 'Perdido']
+const STATUS_CONTACTO = ['Sin contactar', 'Contactado', 'Siguientes pasos', 'Primera reunión', 'Ganado', 'Perdido']
 const ETAPAS_PIPELINE = ['Universo', 'En contacto', 'Reunión agendada', 'Cotización', 'Prospecto']
-const TIPOS = ['Empresa', 'Municipio']
-const SEGMENTOS = ['Privado', 'Gob.']
+const TIPOS = ['Empresa', 'Municipal', 'Estatal', 'Federal']
+const SEGMENTOS = ['Público', 'Privado']
+const RESPONSABLES = ['Alonso García', 'Jaime Verduzco', 'Ricardo Cadena', 'Vania Nava']
 
 function validar(body) {
   const { empresa } = body ?? {}
@@ -20,12 +21,13 @@ function mapear(body) {
     contacto_nombre: body.contacto_nombre?.trim() || null,
     email: body.email?.trim() || null,
     telefono: body.telefono?.trim() || null,
+    telefono2: body.telefono2?.trim() || null,
     sitio_web: body.sitio_web?.trim() || null,
     linkedin: body.linkedin?.trim() || null,
     tipo: TIPOS.includes(body.tipo) ? body.tipo : null,
-    responsable: body.responsable?.trim() || null,
+    responsable: RESPONSABLES.includes(body.responsable) ? body.responsable : null,
     fecha_contacto: body.fecha_contacto?.trim() || null,
-    status_contacto: STATUS_CONTACTO.includes(body.status_contacto) ? body.status_contacto : 'Sin contacto',
+    status_contacto: STATUS_CONTACTO.includes(body.status_contacto) ? body.status_contacto : 'Sin contactar',
     etapa_pipeline: ETAPAS_PIPELINE.includes(body.etapa_pipeline) ? body.etapa_pipeline : 'Universo',
   }
 }
@@ -33,7 +35,7 @@ function mapear(body) {
 export async function listUniverso(req, res) {
   try {
     const rows = await universoRepo.all()
-    res.json({ universo: rows, statusOptions: STATUS_CONTACTO, etapasOptions: ETAPAS_PIPELINE, tipos: TIPOS, segmentos: SEGMENTOS })
+    res.json({ universo: rows, statusOptions: STATUS_CONTACTO, etapasOptions: ETAPAS_PIPELINE, tipos: TIPOS, segmentos: SEGMENTOS, responsables: RESPONSABLES })
   } catch (err) {
     console.error('[universo] list error:', err)
     res.status(500).json({ error: err.message })
@@ -133,6 +135,7 @@ export async function convertirUniverso(req, res) {
       tipo: row.tipo,
       contacto_nombre: row.contacto_nombre,
       telefono: row.telefono,
+      telefono2: row.telefono2,
       responsable: row.responsable,
     })
     await universoRepo.convertir(row.id)

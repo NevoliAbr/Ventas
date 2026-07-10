@@ -1,7 +1,7 @@
 // Datos iniciales del Universo de Prospectos (lcg.xlsx — Universo y Pipeline).
 // Se insertan automáticamente cuando la tabla universo está vacía.
 export const UNIVERSO_SEED = [
-  { empresa: 'Morelia / Michoacán', rubro: 'Público', segmento: 'Gob.', contacto_nombre: 'Jaime Verduzco', telefono: '4436120238', tipo: 'Gobierno estatal', responsable: 'Alonso', fecha_contacto: '2026-05-12', status_contacto: 'Primera reunión', etapa_pipeline: 'Reunión agendada' },
+  { empresa: 'Morelia / Michoacán', rubro: 'Público', segmento: 'Público', contacto_nombre: 'Jaime Verduzco', telefono: '4436120238', tipo: 'Estatal', responsable: 'Alonso García', fecha_contacto: '2026-05-12', status_contacto: 'Primera reunión', etapa_pipeline: 'Reunión agendada' },
   { empresa: 'Centauros del Sureste', rubro: 'Carga terrestre · Sureste · Paquetería', segmento: 'Privado', telefono: '55-5552-3122', sitio_web: 'centaurosdelsureste.com' },
   { empresa: 'Transportes SIVI', rubro: 'Logística · Distribución · Aduana AICM', segmento: 'Privado', sitio_web: 'transportesivi.com' },
   { empresa: 'Control Terrestre', rubro: 'FTL · Transfronterizo · Carga especializada', segmento: 'Privado', sitio_web: 'controlterrestre.com' },

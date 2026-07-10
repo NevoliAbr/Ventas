@@ -3,7 +3,8 @@ import { universoRepo } from '../lib/universoStore.js'
 import { reunionesRepo } from '../lib/reunionesStore.js'
 
 const STATUS_REUNION = ['Agendada', 'Realizada', 'Reprogramada', 'Cancelada']
-const TIPOS = ['Empresa', 'Municipio']
+const TIPOS = ['Empresa', 'Municipal', 'Estatal', 'Federal']
+const RESPONSABLES = ['Alonso García', 'Jaime Verduzco', 'Ricardo Cadena', 'Vania Nava']
 
 function validar(body) {
   if (!body?.empresa?.trim()) return 'La empresa es obligatoria.'
@@ -16,7 +17,8 @@ function mapear(body) {
     tipo: TIPOS.includes(body.tipo) ? body.tipo : null,
     contacto_nombre: body.contacto_nombre?.trim() || null,
     telefono: body.telefono?.trim() || null,
-    responsable: body.responsable?.trim() || null,
+    telefono2: body.telefono2?.trim() || null,
+    responsable: RESPONSABLES.includes(body.responsable) ? body.responsable : null,
     pide_cotizacion: !!body.pide_cotizacion,
     pasa_forecast: !!body.pasa_forecast,
   }
@@ -25,7 +27,7 @@ function mapear(body) {
 export async function listProspectos(req, res) {
   try {
     const rows = await prospectoRepo.all()
-    res.json({ prospectos: rows, statusReunion: STATUS_REUNION, tipos: TIPOS })
+    res.json({ prospectos: rows, statusReunion: STATUS_REUNION, tipos: TIPOS, responsables: RESPONSABLES })
   } catch (err) {
     console.error('[prospectos] list error:', err)
     res.status(500).json({ error: err.message })

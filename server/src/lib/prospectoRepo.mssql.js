@@ -3,7 +3,7 @@ import { getPool, sql } from './mssql.js'
 import { randomUUID } from 'node:crypto'
 
 const CAMPOS = [
-  'empresa', 'tipo', 'contacto_nombre', 'telefono', 'responsable',
+  'empresa', 'tipo', 'contacto_nombre', 'telefono', 'telefono2', 'responsable',
   'fecha_1ra_reunion', 'status_1ra_reunion', 'obs_1ra_reunion',
   'fecha_2da_reunion', 'status_2da_reunion', 'obs_2da_reunion',
   'pide_cotizacion', 'pasa_forecast',
@@ -15,6 +15,7 @@ function bind(reqst, o) {
     .input('tipo', sql.NVarChar, o.tipo ?? null)
     .input('contacto_nombre', sql.NVarChar, o.contacto_nombre ?? null)
     .input('telefono', sql.NVarChar, o.telefono ?? null)
+    .input('telefono2', sql.NVarChar, o.telefono2 ?? null)
     .input('responsable', sql.NVarChar, o.responsable ?? null)
     .input('fecha_1ra_reunion', sql.NVarChar, o.fecha_1ra_reunion ?? null)
     .input('status_1ra_reunion', sql.NVarChar, o.status_1ra_reunion ?? null)

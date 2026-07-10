@@ -149,12 +149,13 @@ async function ensureSchema(pool) {
       contacto_nombre  VARCHAR(200) NULL,
       email            VARCHAR(320) NULL,
       telefono         VARCHAR(50)  NULL,
+      telefono2        VARCHAR(50)  NULL,
       sitio_web        VARCHAR(300) NULL,
       linkedin         VARCHAR(300) NULL,
       tipo             VARCHAR(30)  NULL,
       responsable      VARCHAR(200) NULL,
       fecha_contacto   VARCHAR(40)  NULL,
-      status_contacto  VARCHAR(30)  NOT NULL DEFAULT 'Sin contacto',
+      status_contacto  VARCHAR(30)  NOT NULL DEFAULT 'Sin contactar',
       etapa_pipeline   VARCHAR(30)  NOT NULL DEFAULT 'Universo',
       es_prospecto     TINYINT(1)   NOT NULL DEFAULT 0,
       createdAt        VARCHAR(40)  NOT NULL
@@ -166,6 +167,7 @@ async function ensureSchema(pool) {
       tipo               VARCHAR(30)  NULL,
       contacto_nombre    VARCHAR(200) NULL,
       telefono           VARCHAR(50)  NULL,
+      telefono2          VARCHAR(50)  NULL,
       responsable        VARCHAR(200) NULL,
       fecha_1ra_reunion  VARCHAR(40)  NULL,
       status_1ra_reunion VARCHAR(30)  NULL,
@@ -191,6 +193,15 @@ async function ensureSchema(pool) {
   for (const ddl of tablas) await pool.query(ddl)
   // Migraciones: columnas nuevas en tablas ya existentes.
   await pool.query(`ALTER TABLE universo ADD COLUMN IF NOT EXISTS es_prospecto TINYINT(1) NOT NULL DEFAULT 0`)
+  await pool.query(`ALTER TABLE universo ADD COLUMN IF NOT EXISTS telefono2 VARCHAR(50) NULL`)
+  await pool.query(`UPDATE universo SET status_contacto = 'Sin contactar' WHERE status_contacto = 'Sin contacto'`)
+  await pool.query(`UPDATE universo SET segmento = 'Público' WHERE segmento = 'Gob.'`)
+  await pool.query(`UPDATE universo SET tipo = 'Municipal' WHERE tipo = 'Municipio'`)
+  await pool.query(`UPDATE universo SET tipo = 'Estatal' WHERE tipo = 'Gobierno estatal'`)
+  await pool.query(`UPDATE prospectos_activos SET tipo = 'Municipal' WHERE tipo = 'Municipio'`)
+  await pool.query(`UPDATE universo SET responsable = 'Alonso García' WHERE responsable = 'Alonso'`)
+  await pool.query(`UPDATE prospectos_activos SET responsable = 'Alonso García' WHERE responsable = 'Alonso'`)
+  await pool.query(`ALTER TABLE prospectos_activos ADD COLUMN IF NOT EXISTS telefono2 VARCHAR(50) NULL`)
   await pool.query(`ALTER TABLE ventas ADD COLUMN IF NOT EXISTS origen_tipo VARCHAR(20) NULL`)
   await pool.query(`ALTER TABLE ventas ADD COLUMN IF NOT EXISTS origen_id VARCHAR(64) NULL`)
   await pool.query(`ALTER TABLE ventas ADD COLUMN IF NOT EXISTS origen_nombre VARCHAR(200) NULL`)
