@@ -5,12 +5,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import * as XLSX from 'xlsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { permissionsFor } from '../lib/permissions.js'
-import { universoApi } from '../services/api.js'
+import { catalogoApi, universoApi } from '../services/api.js'
 
 const COLUMNAS_PLANTILLA = [
   'Empresa / Municipio', 'Rubro / Sector', 'Segmento', 'Tipo',
   'Nombre Contacto', 'Email', 'Teléfono 1', 'Teléfono 2', 'Sitio Web', 'LinkedIn',
-  'Responsable LCG', 'Fecha 1er Contacto', 'Status', 'Etapa Pipeline',
+  'Responsable LCG', 'Fecha 1er Contacto', 'Status', 'Etapa Pipeline', 'Observaciones',
 ]
 const MAP_COLUMNAS = {
   'empresa / municipio': 'empresa', 'rubro / sector': 'rubro', 'segmento': 'segmento',
@@ -19,6 +19,7 @@ const MAP_COLUMNAS = {
   'sitio web': 'sitio_web', 'linkedin': 'linkedin',
   'responsable lcg': 'responsable', 'fecha 1er contacto': 'fecha_contacto',
   'status': 'status_contacto', 'status contacto': 'status_contacto', 'etapa pipeline': 'etapa_pipeline',
+  'observaciones': 'observaciones',
 }
 
 function exportarExcel(lista) {
@@ -37,6 +38,7 @@ function exportarExcel(lista) {
     'Fecha 1er Contacto': r.fecha_contacto || '',
     'Status': r.status_contacto || '',
     'Etapa Pipeline': r.etapa_pipeline || '',
+    'Observaciones': r.observaciones || '',
   }))
   const ws = XLSX.utils.json_to_sheet(filas)
   ws['!cols'] = COLUMNAS_PLANTILLA.map((c) => ({ wch: Math.max(c.length + 4, 18) }))
@@ -71,7 +73,7 @@ const STATUS_COLORS = {
 const VACIO = {
   empresa: '', rubro: '', segmento: '', contacto_nombre: '', email: '', telefono: '', telefono2: '',
   sitio_web: '', linkedin: '', tipo: '', responsable: '', fecha_contacto: '',
-  status_contacto: 'Sin contactar', etapa_pipeline: 'Universo',
+  status_contacto: 'Sin contactar', etapa_pipeline: 'Universo', observaciones: '',
 }
 
 export default function Universo() {
@@ -82,7 +84,7 @@ export default function Universo() {
   const canDelete = perms.facultades.ventasEliminar
 
   const [lista, setLista] = useState([])
-  const [opts, setOpts] = useState({ statusOptions: [], etapasOptions: [], tipos: [], segmentos: [], responsables: [] })
+  const [opts, setOpts] = useState({ statusOptions: [], etapasOptions: [], tipos: [], segmentos: [], responsables: [], rubros: [] })
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState(null)
   const [aviso, setAviso] = useState(null)
@@ -95,8 +97,11 @@ export default function Universo() {
 
   useEffect(() => {
     if (!perms.facultades.ventasVer) { setCargando(false); return }
-    universoApi.list()
-      .then((d) => { setLista(d.universo); setOpts({ statusOptions: d.statusOptions, etapasOptions: d.etapasOptions, tipos: d.tipos, segmentos: d.segmentos, responsables: d.responsables }) })
+    Promise.all([universoApi.list(), catalogoApi.listRubros()])
+      .then(([d, r]) => {
+        setLista(d.universo)
+        setOpts({ statusOptions: d.statusOptions, etapasOptions: d.etapasOptions, tipos: d.tipos, segmentos: d.segmentos, responsables: d.responsables, rubros: r.rubros })
+      })
       .catch((e) => setError(e.message))
       .finally(() => setCargando(false))
   }, [perms.facultades.ventasVer])
@@ -105,6 +110,12 @@ export default function Universo() {
   const ok = (m) => { setError(null); setAviso(m) }
   const fail = (e) => { setAviso(null); setError(e.message) }
   function salir() { logout(); navigate('/') }
+
+  async function agregarRubro(nombre) {
+    const { rubro } = await catalogoApi.crearRubro(nombre)
+    setOpts((p) => ({ ...p, rubros: [...new Set([...(p.rubros || []), rubro])].sort((a, b) => a.localeCompare(b)) }))
+    return rubro
+  }
 
   const listaMostrada = lista.filter((r) => {
     if (filtroStatus && r.status_contacto !== filtroStatus) return false
@@ -146,6 +157,7 @@ export default function Universo() {
       sitio_web: r.sitio_web || '', linkedin: r.linkedin || '', tipo: r.tipo || '',
       responsable: r.responsable || '', fecha_contacto: r.fecha_contacto || '',
       status_contacto: r.status_contacto || 'Sin contactar', etapa_pipeline: r.etapa_pipeline || 'Universo',
+      observaciones: r.observaciones || '',
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -225,7 +237,7 @@ export default function Universo() {
         {canEdit && (
           <UniversoFormulario
             form={form} f={f} opts={opts} editId={editId}
-            onSubmit={guardar}
+            onSubmit={guardar} onAgregarRubro={agregarRubro}
             onCancelar={() => { setForm(VACIO); setEditId(null) }}
           />
         )}
@@ -263,7 +275,49 @@ function UniversoMetricas({ lista, opts }) {
   )
 }
 
-function UniversoFormulario({ form, f, opts, editId, onSubmit, onCancelar }) {
+function RubroCombo({ id, value, onChange, opciones, onAgregar }) {
+  const [modoNuevo, setModoNuevo] = useState(false)
+  const [nuevo, setNuevo] = useState('')
+
+  async function confirmar() {
+    const v = nuevo.trim()
+    if (!v) return
+    await onAgregar(v)
+    onChange(v)
+    setModoNuevo(false); setNuevo('')
+  }
+
+  if (modoNuevo) {
+    return (
+      <div className="slds-grid slds-grid_vertical-align-center" style={{ gap: 4 }}>
+        <input
+          id={id} className="slds-input" value={nuevo} autoFocus placeholder="Nuevo rubro/sector"
+          onChange={(e) => setNuevo(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmar() } }}
+        />
+        <button type="button" className="slds-button slds-button_brand" onClick={confirmar}>Agregar</button>
+        <button type="button" className="slds-button slds-button_neutral" onClick={() => { setModoNuevo(false); setNuevo('') }}>×</button>
+      </div>
+    )
+  }
+
+  const opcionesMostradas = value && !opciones.includes(value) ? [value, ...opciones] : opciones
+
+  return (
+    <div className="slds-select_container">
+      <select
+        id={id} className="slds-select" value={value}
+        onChange={(e) => { if (e.target.value === '__nuevo__') setModoNuevo(true); else onChange(e.target.value) }}
+      >
+        <option value="">—</option>
+        {opcionesMostradas.map((r) => <option key={r} value={r}>{r}</option>)}
+        <option value="__nuevo__">+ Agregar nuevo…</option>
+      </select>
+    </div>
+  )
+}
+
+function UniversoFormulario({ form, f, opts, editId, onSubmit, onAgregarRubro, onCancelar }) {
   return (
     <div className="slds-box slds-theme_default slds-m-bottom_medium">
       <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
@@ -278,7 +332,7 @@ function UniversoFormulario({ form, f, opts, editId, onSubmit, onCancelar }) {
           </div>
           <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
             <label className="slds-form-element__label" htmlFor="universo-rubro">Rubro / Sector</label>
-            <input id="universo-rubro" className="slds-input" value={form.rubro} onChange={(e) => f({ rubro: e.target.value })} placeholder="Logística…" />
+            <RubroCombo id="universo-rubro" value={form.rubro} onChange={(v) => f({ rubro: v })} opciones={opts.rubros || []} onAgregar={onAgregarRubro} />
           </div>
           <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}>
             <label className="slds-form-element__label" htmlFor="universo-segmento">Segmento</label>
@@ -336,6 +390,12 @@ function UniversoFormulario({ form, f, opts, editId, onSubmit, onCancelar }) {
               {(opts.etapasOptions || []).map((e) => <option key={e} value={e}>{e}</option>)}
             </select></div>
           </div>
+        </div>
+        <div className="slds-grid slds-gutters slds-wrap slds-grid_vertical-align-end slds-m-top_x-small">
+          <div className="slds-col">
+            <label className="slds-form-element__label" htmlFor="universo-observaciones">Observaciones</label>
+            <textarea id="universo-observaciones" className="slds-input" rows={2} value={form.observaciones} onChange={(e) => f({ observaciones: e.target.value })} />
+          </div>
           <div className="slds-col slds-grow-none">
             <button className="slds-button slds-button_brand" type="submit">{editId ? 'Guardar' : 'Agregar'}</button>
           </div>
@@ -381,7 +441,7 @@ function UniversoTabla({ listaMostrada, cargando, filtroStatus, filtroEtapa, can
           <table className="slds-table slds-table_bordered slds-table_cell-buffer">
             <thead><tr className="slds-line-height_reset">
               <th>Empresa</th><th>Rubro</th><th>Seg.</th><th>Contacto</th><th>Tel. 1</th><th>Tel. 2</th>
-              <th>Responsable</th><th>1er contacto</th><th>Status</th><th>Etapa</th>
+              <th>Responsable</th><th>1er contacto</th><th>Status</th><th>Etapa</th><th>Observaciones</th>
               {(canEdit || canDelete) && <th>Acciones</th>}
             </tr></thead>
             <tbody>
@@ -411,6 +471,7 @@ function UniversoTabla({ listaMostrada, cargando, filtroStatus, filtroEtapa, can
                   <td>{r.fecha_contacto || '—'}</td>
                   <td><span className="role-badge" style={{ background: STATUS_COLORS[r.status_contacto] || '#6b7280', color: '#fff', fontSize: '0.875rem' }}>{r.status_contacto}</span></td>
                   <td>{r.etapa_pipeline || '—'}</td>
+                  <td style={{ maxWidth: 220, whiteSpace: 'pre-wrap' }} title={r.observaciones || ''}>{r.observaciones || '—'}</td>
                   {(canEdit || canDelete) && <td>
                     {canEdit && <><button type="button" className="slds-button slds-button_neutral" onClick={() => onEditar(r)}>Editar</button>{' '}</>}
                     {canDelete && <button type="button" className="slds-button slds-button_text-destructive" onClick={() => onEliminar(r)}>Eliminar</button>}

@@ -11,4 +11,6 @@ const mod = driver === 'mysql'
 
 console.log(`[db] Motor de catálogo: ${driver === 'mysql' ? 'MySQL/MariaDB' : 'SQL Server'}`)
 
-export const { unidades, clientes, productos, tiposVenta } = mod
+export const { unidades, clientes, productos, tiposVenta, rubros } = mod
+
+rubros.seedIfEmpty(['Transporte']).catch((e) => console.warn('[catalogo] seed de rubros omitido:', e.message))

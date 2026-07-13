@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 const CAMPOS = [
   'empresa', 'rubro', 'segmento', 'contacto_nombre', 'email', 'telefono', 'telefono2',
   'sitio_web', 'linkedin', 'tipo', 'responsable', 'fecha_contacto',
-  'status_contacto', 'etapa_pipeline',
+  'status_contacto', 'etapa_pipeline', 'observaciones',
 ]
 
 function valores(o) {
@@ -14,7 +14,7 @@ function valores(o) {
     o.rubro ?? null, o.segmento ?? null, o.contacto_nombre ?? null,
     o.email ?? null, o.telefono ?? null, o.telefono2 ?? null, o.sitio_web ?? null, o.linkedin ?? null,
     o.tipo ?? null, o.responsable ?? null, o.fecha_contacto ?? null,
-    o.status_contacto ?? 'Sin contactar', o.etapa_pipeline ?? 'Universo',
+    o.status_contacto ?? 'Sin contactar', o.etapa_pipeline ?? 'Universo', o.observaciones ?? null,
   ]
 }
 

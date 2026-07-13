@@ -57,6 +57,13 @@ async function ensureSchema(pool) {
       abreviatura VARCHAR(20)  NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
+    `CREATE TABLE IF NOT EXISTS rubros (
+      id        VARCHAR(64)  NOT NULL PRIMARY KEY,
+      nombre    VARCHAR(200) NOT NULL,
+      createdAt VARCHAR(40)  NOT NULL,
+      UNIQUE KEY uq_rubros_nombre (nombre)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+
     `CREATE TABLE IF NOT EXISTS clientes (
       id       VARCHAR(64)  NOT NULL PRIMARY KEY,
       nombre   VARCHAR(200) NOT NULL,
@@ -158,6 +165,7 @@ async function ensureSchema(pool) {
       status_contacto  VARCHAR(30)  NOT NULL DEFAULT 'Sin contactar',
       etapa_pipeline   VARCHAR(30)  NOT NULL DEFAULT 'Universo',
       es_prospecto     TINYINT(1)   NOT NULL DEFAULT 0,
+      observaciones    TEXT         NULL,
       createdAt        VARCHAR(40)  NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
 
@@ -194,6 +202,7 @@ async function ensureSchema(pool) {
   // Migraciones: columnas nuevas en tablas ya existentes.
   await pool.query(`ALTER TABLE universo ADD COLUMN IF NOT EXISTS es_prospecto TINYINT(1) NOT NULL DEFAULT 0`)
   await pool.query(`ALTER TABLE universo ADD COLUMN IF NOT EXISTS telefono2 VARCHAR(50) NULL`)
+  await pool.query(`ALTER TABLE universo ADD COLUMN IF NOT EXISTS observaciones TEXT NULL`)
   await pool.query(`UPDATE universo SET status_contacto = 'Sin contactar' WHERE status_contacto = 'Sin contacto'`)
   await pool.query(`UPDATE universo SET segmento = 'Público' WHERE segmento = 'Gob.'`)
   await pool.query(`UPDATE universo SET tipo = 'Municipal' WHERE tipo = 'Municipio'`)

@@ -1,5 +1,5 @@
 // Controlador del catálogo de ventas: unidades, clientes, productos y tipos de venta.
-import { unidades, clientes, productos, tiposVenta } from '../lib/catalogoStore.js'
+import { unidades, clientes, productos, tiposVenta, rubros } from '../lib/catalogoStore.js'
 
 const TIPOS_PRODUCTO = ['producto', 'servicio']
 
@@ -22,6 +22,18 @@ export async function updateUnidad(req, res) {
 export async function deleteUnidad(req, res) {
   await unidades.remove(req.params.id)
   res.json({ ok: true })
+}
+
+// ---------- Rubros / sectores (Universo) ----------
+export async function listRubros(req, res) {
+  const rows = await rubros.all()
+  res.json({ rubros: rows.map((r) => r.nombre) })
+}
+export async function createRubro(req, res) {
+  const { nombre } = req.body ?? {}
+  if (!nombre?.trim()) return res.status(400).json({ error: 'El nombre es obligatorio.' })
+  const r = await rubros.create(nombre.trim())
+  res.status(201).json({ rubro: r.nombre })
 }
 
 // ---------- Clientes ----------

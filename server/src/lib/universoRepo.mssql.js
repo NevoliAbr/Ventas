@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 const CAMPOS = [
   'empresa', 'rubro', 'segmento', 'contacto_nombre', 'email', 'telefono', 'telefono2',
   'sitio_web', 'linkedin', 'tipo', 'responsable', 'fecha_contacto',
-  'status_contacto', 'etapa_pipeline',
+  'status_contacto', 'etapa_pipeline', 'observaciones',
 ]
 
 function bind(reqst, o) {
@@ -24,6 +24,7 @@ function bind(reqst, o) {
     .input('fecha_contacto', sql.NVarChar, o.fecha_contacto ?? null)
     .input('status_contacto', sql.NVarChar, o.status_contacto ?? 'Sin contactar')
     .input('etapa_pipeline', sql.NVarChar, o.etapa_pipeline ?? 'Universo')
+    .input('observaciones', sql.NVarChar, o.observaciones ?? null)
 }
 
 export const universoRepo = {

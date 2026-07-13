@@ -59,6 +59,16 @@ async function ensureSchema(pool) {
       abreviatura NVARCHAR(20)  NULL
     )`)
 
+  // Catálogo: rubros / sectores (Universo)
+  await pool.request().query(`
+    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='rubros' AND xtype='U')
+    CREATE TABLE rubros (
+      id        NVARCHAR(64)  NOT NULL PRIMARY KEY,
+      nombre    NVARCHAR(200) NOT NULL,
+      createdAt NVARCHAR(40)  NOT NULL,
+      CONSTRAINT uq_rubros_nombre UNIQUE (nombre)
+    )`)
+
   // Catálogo: clientes
   await pool.request().query(`
     IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='clientes' AND xtype='U')
@@ -217,9 +227,11 @@ async function ensureSchema(pool) {
       status_contacto  NVARCHAR(30)  NOT NULL CONSTRAINT DF_uni_status DEFAULT 'Sin contactar',
       etapa_pipeline   NVARCHAR(30)  NOT NULL CONSTRAINT DF_uni_etapa  DEFAULT 'Universo',
       es_prospecto     BIT           NOT NULL CONSTRAINT DF_uni_esp    DEFAULT 0,
+      observaciones    NVARCHAR(MAX) NULL,
       createdAt        NVARCHAR(40)  NOT NULL
     )`)
   await pool.request().query(`IF COL_LENGTH('universo','telefono2') IS NULL ALTER TABLE universo ADD telefono2 NVARCHAR(50) NULL`)
+  await pool.request().query(`IF COL_LENGTH('universo','observaciones') IS NULL ALTER TABLE universo ADD observaciones NVARCHAR(MAX) NULL`)
   await pool.request().query(`UPDATE universo SET status_contacto = 'Sin contactar' WHERE status_contacto = 'Sin contacto'`)
   await pool.request().query(`UPDATE universo SET segmento = 'Público' WHERE segmento = 'Gob.'`)
   await pool.request().query(`UPDATE universo SET tipo = 'Municipal' WHERE tipo = 'Municipio'`)

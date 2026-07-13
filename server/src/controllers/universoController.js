@@ -29,6 +29,7 @@ function mapear(body) {
     fecha_contacto: body.fecha_contacto?.trim() || null,
     status_contacto: STATUS_CONTACTO.includes(body.status_contacto) ? body.status_contacto : 'Sin contactar',
     etapa_pipeline: ETAPAS_PIPELINE.includes(body.etapa_pipeline) ? body.etapa_pipeline : 'Universo',
+    observaciones: body.observaciones?.trim() || null,
   }
 }
 

@@ -41,6 +41,32 @@ export const unidades = {
   },
 }
 
+// ---------------- Rubros / sectores (Universo) ----------------
+export const rubros = {
+  async all() {
+    const pool = await getPool()
+    return (await pool.request().query('SELECT * FROM rubros ORDER BY nombre')).recordset
+  },
+  async create(nombre) {
+    const pool = await getPool()
+    const existente = first(await pool.request().input('nombre', sql.NVarChar, nombre).query('SELECT * FROM rubros WHERE nombre=@nombre'))
+    if (existente) return existente
+    const r = { id: randomUUID(), nombre, createdAt: new Date().toISOString() }
+    await pool.request()
+      .input('id', sql.NVarChar, r.id)
+      .input('nombre', sql.NVarChar, r.nombre)
+      .input('createdAt', sql.NVarChar, r.createdAt)
+      .query('INSERT INTO rubros (id, nombre, createdAt) VALUES (@id, @nombre, @createdAt)')
+    return r
+  },
+  async seedIfEmpty(nombres) {
+    const pool = await getPool()
+    const { recordset } = await pool.request().query('SELECT COUNT(*) AS n FROM rubros')
+    if (Number(recordset[0].n) > 0) return
+    for (const nombre of nombres) await this.create(nombre)
+  },
+}
+
 // ---------------- Clientes ----------------
 export const clientes = {
   async all() {
