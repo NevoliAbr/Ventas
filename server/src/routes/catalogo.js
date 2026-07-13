@@ -5,7 +5,7 @@ import { authMiddleware } from '../middleware/authMiddleware.js'
 import { requireFaculty } from '../middleware/permissions.js'
 import {
   listUnidades, createUnidad, updateUnidad, deleteUnidad,
-  listRubros, createRubro,
+  listRubros, createRubro, updateRubro, deleteRubro,
   listClientes, createCliente, updateCliente, deleteCliente,
   listProductos, createProducto, updateProducto, deleteProducto,
   createTipoVenta, updateTipoVenta, deleteTipoVenta,
@@ -25,6 +25,8 @@ router.delete('/unidades/:id', ...editar, deleteUnidad)
 // Rubros / sectores (Universo)
 router.get('/rubros', ...ver, listRubros)
 router.post('/rubros', ...editar, createRubro)
+router.patch('/rubros/:id', ...editar, updateRubro)
+router.delete('/rubros/:id', ...editar, deleteRubro)
 
 // Clientes
 router.get('/clientes', ...ver, listClientes)

@@ -27,13 +27,24 @@ export async function deleteUnidad(req, res) {
 // ---------- Rubros / sectores (Universo) ----------
 export async function listRubros(req, res) {
   const rows = await rubros.all()
-  res.json({ rubros: rows.map((r) => r.nombre) })
+  res.json({ rubros: rows.map((r) => ({ id: r.id, nombre: r.nombre })) })
 }
 export async function createRubro(req, res) {
   const { nombre } = req.body ?? {}
   if (!nombre?.trim()) return res.status(400).json({ error: 'El nombre es obligatorio.' })
   const r = await rubros.create(nombre.trim())
-  res.status(201).json({ rubro: r.nombre })
+  res.status(201).json({ rubro: { id: r.id, nombre: r.nombre } })
+}
+export async function updateRubro(req, res) {
+  const { nombre } = req.body ?? {}
+  if (!nombre?.trim()) return res.status(400).json({ error: 'El nombre es obligatorio.' })
+  const r = await rubros.update(req.params.id, nombre.trim())
+  if (!r) return res.status(404).json({ error: 'Rubro no encontrado.' })
+  res.json({ rubro: { id: r.id, nombre: r.nombre } })
+}
+export async function deleteRubro(req, res) {
+  await rubros.remove(req.params.id)
+  res.json({ ok: true })
 }
 
 // ---------- Clientes ----------

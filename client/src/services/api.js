@@ -100,6 +100,8 @@ export const catalogoApi = {
   // Rubros / sectores (Universo)
   listRubros: () => fetch(`${BASE}/catalogo/rubros`, { headers: authHeaders() }).then(handle),
   crearRubro: (nombre) => authPost('/catalogo/rubros', { nombre }),
+  actualizarRubro: (id, nombre) => authPatch(`/catalogo/rubros/${id}`, { nombre }),
+  eliminarRubro: (id) => authDelete(`/catalogo/rubros/${id}`),
   // Clientes
   listClientes: () => fetch(`${BASE}/catalogo/clientes`, { headers: authHeaders() }).then(handle),
   createCliente: (d) => authPost('/catalogo/clientes', d),

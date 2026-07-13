@@ -59,6 +59,19 @@ export const rubros = {
       .query('INSERT INTO rubros (id, nombre, createdAt) VALUES (@id, @nombre, @createdAt)')
     return r
   },
+  async update(id, nombre) {
+    const pool = await getPool()
+    await pool.request()
+      .input('id', sql.NVarChar, id)
+      .input('nombre', sql.NVarChar, nombre)
+      .query('UPDATE rubros SET nombre=@nombre WHERE id=@id')
+    return first(await pool.request().input('id', sql.NVarChar, id).query('SELECT * FROM rubros WHERE id=@id'))
+  },
+  async remove(id) {
+    const pool = await getPool()
+    const r = await pool.request().input('id', sql.NVarChar, id).query('DELETE FROM rubros WHERE id=@id')
+    return r.rowsAffected[0] > 0
+  },
   async seedIfEmpty(nombres) {
     const pool = await getPool()
     const { recordset } = await pool.request().query('SELECT COUNT(*) AS n FROM rubros')

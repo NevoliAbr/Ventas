@@ -261,6 +261,8 @@ body {
 .metric-label {
   color: var(--c-muted);
   font-size: 0.85rem;
+  line-height: 1.25;
+  min-height: 2.2em;
   margin: 0;
 }
 .metric-value {

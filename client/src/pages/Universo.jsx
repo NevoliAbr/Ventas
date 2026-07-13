@@ -113,8 +113,25 @@ export default function Universo() {
 
   async function agregarRubro(nombre) {
     const { rubro } = await catalogoApi.crearRubro(nombre)
-    setOpts((p) => ({ ...p, rubros: [...new Set([...(p.rubros || []), rubro])].sort((a, b) => a.localeCompare(b)) }))
+    setOpts((p) => ({
+      ...p,
+      rubros: [...p.rubros.filter((r) => r.id !== rubro.id), rubro].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    }))
     return rubro
+  }
+
+  async function renombrarRubro(id, nombre) {
+    const { rubro } = await catalogoApi.actualizarRubro(id, nombre)
+    setOpts((p) => ({
+      ...p,
+      rubros: p.rubros.map((r) => (r.id === id ? rubro : r)).sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    }))
+    return rubro
+  }
+
+  async function eliminarRubro(id) {
+    await catalogoApi.eliminarRubro(id)
+    setOpts((p) => ({ ...p, rubros: p.rubros.filter((r) => r.id !== id) }))
   }
 
   const listaMostrada = lista.filter((r) => {
@@ -238,6 +255,7 @@ export default function Universo() {
           <UniversoFormulario
             form={form} f={f} opts={opts} editId={editId}
             onSubmit={guardar} onAgregarRubro={agregarRubro}
+            onRenombrarRubro={renombrarRubro} onEliminarRubro={eliminarRubro}
             onCancelar={() => { setForm(VACIO); setEditId(null) }}
           />
         )}
@@ -262,7 +280,7 @@ export default function Universo() {
 
 function UniversoMetricas({ lista, opts }) {
   return (
-    <div className="slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
+    <div className="slds-grid slds-wrap slds-gutters slds-m-bottom_medium" style={{ alignItems: 'stretch' }}>
       {(opts.statusOptions || []).map((s) => (
         <div key={s} className="slds-col slds-size_1-of-3 slds-medium-size_1-of-6 slds-p-vertical_x-small">
           <div className="metric-card" style={{ borderTop: `3px solid ${STATUS_COLORS[s] || '#ccc'}` }}>
@@ -275,15 +293,16 @@ function UniversoMetricas({ lista, opts }) {
   )
 }
 
-function RubroCombo({ id, value, onChange, opciones, onAgregar }) {
+function RubroCombo({ id, value, onChange, opciones, onAgregar, onRenombrar, onEliminar }) {
   const [modoNuevo, setModoNuevo] = useState(false)
   const [nuevo, setNuevo] = useState('')
+  const [modoAdmin, setModoAdmin] = useState(false)
 
   async function confirmar() {
     const v = nuevo.trim()
     if (!v) return
-    await onAgregar(v)
-    onChange(v)
+    const rubro = await onAgregar(v)
+    onChange(rubro.nombre)
     setModoNuevo(false); setNuevo('')
   }
 
@@ -301,23 +320,87 @@ function RubroCombo({ id, value, onChange, opciones, onAgregar }) {
     )
   }
 
-  const opcionesMostradas = value && !opciones.includes(value) ? [value, ...opciones] : opciones
+  const opcionesMostradas = value && !opciones.some((r) => r.nombre === value)
+    ? [{ id: '__actual__', nombre: value }, ...opciones]
+    : opciones
 
   return (
-    <div className="slds-select_container">
-      <select
-        id={id} className="slds-select" value={value}
-        onChange={(e) => { if (e.target.value === '__nuevo__') setModoNuevo(true); else onChange(e.target.value) }}
+    <div>
+      <div className="slds-select_container">
+        <select
+          id={id} className="slds-select" value={value}
+          onChange={(e) => { if (e.target.value === '__nuevo__') setModoNuevo(true); else onChange(e.target.value) }}
+        >
+          <option value="">—</option>
+          {opcionesMostradas.map((r) => <option key={r.id} value={r.nombre}>{r.nombre}</option>)}
+          <option value="__nuevo__">+ Agregar nuevo…</option>
+        </select>
+      </div>
+      <button
+        type="button" className="slds-button slds-button_neutral"
+        style={{ fontSize: '0.75rem', padding: '2px 0', marginTop: 2 }}
+        onClick={() => setModoAdmin((v) => !v)}
       >
-        <option value="">—</option>
-        {opcionesMostradas.map((r) => <option key={r} value={r}>{r}</option>)}
-        <option value="__nuevo__">+ Agregar nuevo…</option>
-      </select>
+        {modoAdmin ? 'Ocultar lista ▲' : 'Editar / eliminar rubros ▼'}
+      </button>
+      {modoAdmin && (
+        <div className="slds-box slds-m-top_x-small" style={{ padding: 8 }}>
+          {opciones.length === 0 && <p className="slds-text-color_weak slds-text-body_small">Sin rubros guardados.</p>}
+          {opciones.map((r) => (
+            <RubroAdminFila
+              key={r.id} rubro={r}
+              onRenombrar={async (nuevoNombre) => {
+                const actualizado = await onRenombrar(r.id, nuevoNombre)
+                if (r.nombre === value) onChange(actualizado.nombre)
+              }}
+              onEliminar={async () => {
+                if (!window.confirm(`¿Eliminar el rubro "${r.nombre}"?`)) return
+                await onEliminar(r.id)
+                if (r.nombre === value) onChange('')
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
-function UniversoFormulario({ form, f, opts, editId, onSubmit, onAgregarRubro, onCancelar }) {
+function RubroAdminFila({ rubro, onRenombrar, onEliminar }) {
+  const [editando, setEditando] = useState(false)
+  const [texto, setTexto] = useState(rubro.nombre)
+
+  async function guardar() {
+    const v = texto.trim()
+    if (!v) return
+    await onRenombrar(v)
+    setEditando(false)
+  }
+
+  return (
+    <div className="slds-grid slds-grid_vertical-align-center" style={{ gap: 6, padding: '3px 0' }}>
+      {editando ? (
+        <>
+          <input
+            className="slds-input" style={{ flex: 1 }} value={texto} autoFocus
+            onChange={(e) => setTexto(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); guardar() } }}
+          />
+          <button type="button" className="slds-button slds-button_brand" onClick={guardar}>Guardar</button>
+          <button type="button" className="slds-button slds-button_neutral" onClick={() => { setEditando(false); setTexto(rubro.nombre) }}>Cancelar</button>
+        </>
+      ) : (
+        <>
+          <span style={{ flex: 1 }}>{rubro.nombre}</span>
+          <button type="button" className="slds-button slds-button_neutral" onClick={() => setEditando(true)}>Editar</button>
+          <button type="button" className="slds-button slds-button_text-destructive" onClick={onEliminar}>Eliminar</button>
+        </>
+      )}
+    </div>
+  )
+}
+
+function UniversoFormulario({ form, f, opts, editId, onSubmit, onAgregarRubro, onRenombrarRubro, onEliminarRubro, onCancelar }) {
   return (
     <div className="slds-box slds-theme_default slds-m-bottom_medium">
       <div className="slds-grid slds-grid_align-spread slds-m-bottom_small">
@@ -332,7 +415,10 @@ function UniversoFormulario({ form, f, opts, editId, onSubmit, onAgregarRubro, o
           </div>
           <div className="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
             <label className="slds-form-element__label" htmlFor="universo-rubro">Rubro / Sector</label>
-            <RubroCombo id="universo-rubro" value={form.rubro} onChange={(v) => f({ rubro: v })} opciones={opts.rubros || []} onAgregar={onAgregarRubro} />
+            <RubroCombo
+              id="universo-rubro" value={form.rubro} onChange={(v) => f({ rubro: v })} opciones={opts.rubros || []}
+              onAgregar={onAgregarRubro} onRenombrar={onRenombrarRubro} onEliminar={onEliminarRubro}
+            />
           </div>
           <div className="slds-col slds-grow-none" style={{ maxWidth: 130 }}>
             <label className="slds-form-element__label" htmlFor="universo-segmento">Segmento</label>
